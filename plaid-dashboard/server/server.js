@@ -5,6 +5,7 @@ const { Configuration, PlaidApi, PlaidEnvironments, Products, CountryCode } = re
 const { v4: uuidv4 } = require('uuid');
 const { getStore, updateStore } = require('./store');
 const { generateDemoData } = require('./seed-demo');
+const { createSpreadsheet, backupToSheet, backupToExistingSheet } = require('./google-sheets');
 
 const path = require('path');
 
@@ -460,6 +461,67 @@ app.get('/api/audit', (req, res) => {
 app.get('/api/categories', (req, res) => {
   const store = getStore();
   res.json(store.categories);
+});
+
+// ==================== GOOGLE SHEETS BACKUP ====================
+
+// Create a new Google Sheet and backup all data
+app.post('/api/sheets/backup', async (req, res) => {
+  try {
+    const store = getStore();
+    const date = new Date().toISOString().split('T')[0];
+    const title = `NF6 Financial Backup - ${date}`;
+
+    const { spreadsheetId, spreadsheetUrl } = await createSpreadsheet(title);
+    const result = await backupToSheet(spreadsheetId);
+
+    // Save the spreadsheet ID for future backups
+    const backupLog = store.backupLog || [];
+    backupLog.push({
+      spreadsheetId,
+      spreadsheetUrl,
+      backedUpAt: result.backedUpAt,
+      totalTransactions: result.totalTransactions,
+      totalCompanies: result.totalCompanies,
+    });
+    updateStore('backupLog', backupLog);
+
+    res.json({
+      success: true,
+      spreadsheetUrl,
+      spreadsheetId,
+      ...result,
+    });
+  } catch (error) {
+    console.error('Google Sheets backup error:', error.message);
+    res.status(500).json({
+      error: error.message,
+      hint: error.message.includes('GOOGLE_SERVICE_ACCOUNT_JSON')
+        ? 'Add your Google Service Account JSON to the .env file'
+        : 'Check Google Sheets API credentials',
+    });
+  }
+});
+
+// Update an existing Google Sheet with latest data
+app.post('/api/sheets/sync', async (req, res) => {
+  try {
+    const { spreadsheetId } = req.body;
+    if (!spreadsheetId) {
+      return res.status(400).json({ error: 'spreadsheetId is required' });
+    }
+    const result = await backupToExistingSheet(spreadsheetId);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    console.error('Google Sheets sync error:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get backup history
+app.get('/api/sheets/history', (req, res) => {
+  const store = getStore();
+  res.json(store.backupLog || []);
 });
 
 // Health check

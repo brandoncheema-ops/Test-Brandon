@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { FiHome, FiDollarSign, FiList, FiPieChart, FiShield, FiSettings, FiMenu, FiX, FiRefreshCw } from 'react-icons/fi';
+import { FiHome, FiDollarSign, FiList, FiPieChart, FiShield, FiSettings, FiMenu, FiX, FiRefreshCw, FiUploadCloud } from 'react-icons/fi';
 import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
 import Companies from './pages/Companies';
 import CashFlow from './pages/CashFlow';
 import Audit from './pages/Audit';
+import Backup from './pages/Backup';
 import Accounts from './pages/Accounts';
 import api from './api';
 import './styles.css';
@@ -34,6 +35,7 @@ function App() {
     { path: '/accounts', icon: <FiDollarSign />, label: 'Accounts' },
     { path: '/cashflow', icon: <FiPieChart />, label: 'Cash Flow' },
     { path: '/audit', icon: <FiShield />, label: 'Audit' },
+    { path: '/backup', icon: <FiUploadCloud />, label: 'Backup' },
   ];
 
   return (
@@ -84,6 +86,7 @@ function App() {
               <Route path="/accounts" element={<Accounts />} />
               <Route path="/cashflow" element={<CashFlow />} />
               <Route path="/audit" element={<Audit />} />
+              <Route path="/backup" element={<Backup />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </div>
