@@ -1,0 +1,20 @@
+{
+  "name": "my-new-agent",
+  "displayName": "My New Agent",
+  "version": "1.0.0",
+  "description": "Brief description of what this agent does.",
+  "owner": "Your Name",
+  "status": "active",
+  "capabilities": [],
+  "knowledge": {
+    "directory": "./knowledge",
+    "description": "Describe what knowledge this agent uses."
+  },
+  "settings": {
+    "model": "claude-opus-4-6",
+    "maxTokens": 4096,
+    "temperature": 0.7
+  },
+  "createdAt": "",
+  "updatedAt": ""
+}

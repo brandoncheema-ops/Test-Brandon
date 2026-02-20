@@ -262,6 +262,21 @@ Each property has configurable fee structures, supporting multi-property portfol
 
 **YTD Summary:** $44,900 gross / $34,920 net / 66% occupancy
 
+## Agents
+
+The `agents/` directory is the central hub for all AI agents in the NF6 ecosystem. Each agent has its own subdirectory with configuration, source code, and a **knowledge store** for LLM context.
+
+| Agent | Description | Status |
+|-------|-------------|--------|
+| [Brandon's Agent](./agents/brandons-agent/) | Primary automation agent for NF6 operations | Active |
+
+To create a new agent, copy the template:
+```bash
+cp -r agents/agent-template agents/my-new-agent
+```
+
+See [agents/README.md](./agents/README.md) for full documentation.
+
 ## License
 
 Proprietary - NF6 Family Office. All rights reserved.
