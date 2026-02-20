@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NF6 Family Office - QBO Financial Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --primary: #1a5f4a;
+            --primary-dark: #0d3a2a;
+            --primary-light: #2d7a5e;
+            --accent: #c3a54e;
+            --bg: #f5f7fa;
+            --text: #1a1a2e;
+            --muted: #888;
+            --border: #e0e0e0;
+            --success: #2e7d32;
+            --danger: #d84040;
+            --warning: #e6a817;
+            --card-shadow: 0 2px 12px rgba(0,0,0,0.07);
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); }
+        .app { display:flex; min-height:100vh; }
+
+        /* Sidebar */
+        .sidebar {
+            width:260px; background: linear-gradient(180deg, var(--primary-dark) 0%, var(--primary) 100%);
+            color:#fff; position:fixed; top:0; left:0; height:100vh; overflow-y:auto; z-index:100;
+            transition: transform .3s;
+        }
+        .sidebar-hdr { padding:24px; border-bottom:1px solid rgba(255,255,255,.1); }
+        .sidebar-logo { font-size:22px; font-weight:800; letter-spacing:2px; }
+        .sidebar-sub { font-size:11px; color:rgba(255,255,255,.45); margin-top:4px; }
+        .nav-section { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:rgba(255,255,255,.3); padding:20px 24px 8px; }
+        .nav-item {
+            display:flex; align-items:center; gap:12px; padding:11px 24px; color:rgba(255,255,255,.65);
+            font-size:13px; font-weight:500; cursor:pointer; border-left:3px solid transparent; transition:.2s;
+        }
+        .nav-item:hover { background:rgba(255,255,255,.07); color:#fff; }
+        .nav-item.active { background:rgba(255,255,255,.12); color:#fff; border-left-color:var(--accent); }
+        .nav-item svg { width:18px; height:18px; flex-shrink:0; }
+
+        /* Main */
+        .main { margin-left:260px; flex:1; min-height:100vh; }
+        .topbar {
+            background:#fff; padding:16px 32px; border-bottom:1px solid var(--border);
+            display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:50;
+        }
+        .topbar-left { display:flex; align-items:center; gap:12px; }
+        .topbar-right { display:flex; align-items:center; gap:16px; font-size:13px; color:var(--muted); }
+        .hamburger { display:none; background:none; border:none; font-size:24px; cursor:pointer; }
+        .page { padding:28px 32px; display:none; }
+        .page.active { display:block; }
+        .page-title { font-size:24px; font-weight:700; margin-bottom:4px; }
+        .page-sub { font-size:13px; color:var(--muted); margin-bottom:24px; }
+
+        /* KPI Cards */
+        .kpi-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:16px; margin-bottom:28px; }
+        .kpi {
+            background:#fff; border-radius:12px; padding:20px; box-shadow:var(--card-shadow);
+            border:1px solid var(--border); position:relative; overflow:hidden;
+        }
+        .kpi::before { content:''; position:absolute; top:0; left:0; width:4px; height:100%; background:var(--primary); }
+        .kpi.gold::before { background:var(--accent); }
+        .kpi.red::before { background:var(--danger); }
+        .kpi.green::before { background:var(--success); }
+        .kpi-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:8px; }
+        .kpi-val { font-size:28px; font-weight:700; color:var(--primary); }
+        .kpi-val.green { color:var(--success); }
+        .kpi-val.red { color:var(--danger); }
+        .kpi-detail { font-size:11px; color:var(--muted); margin-top:4px; }
+
+        /* Cards */
+        .card { background:#fff; border-radius:12px; box-shadow:var(--card-shadow); border:1px solid var(--border); overflow:hidden; margin-bottom:20px; }
+        .card-hdr { padding:16px 20px; border-bottom:1px solid var(--border); font-weight:600; font-size:15px; display:flex; align-items:center; justify-content:space-between; }
+        .card-body { padding:20px; }
+        .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px; }
+        .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; margin-bottom:20px; }
+
+        /* Tables */
+        table { width:100%; border-collapse:collapse; }
+        thead { background:var(--bg); }
+        th { padding:10px 14px; text-align:left; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#666; border-bottom:1px solid var(--border); }
+        td { padding:10px 14px; border-bottom:1px solid #f0f0f0; font-size:13px; }
+        tr:hover { background:#fafbfc; }
+        .text-right { text-align:right; }
+        .fw-600 { font-weight:600; }
+        .text-green { color:var(--success); }
+        .text-red { color:var(--danger); }
+        .text-muted { color:var(--muted); }
+
+        /* Badges */
+        .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+        .badge-bank { background:#e3f2fd; color:#1565c0; }
+        .badge-brokerage { background:#f3e5f5; color:#7b1fa2; }
+        .badge-investment { background:#fff3e0; color:#ef6c00; }
+        .badge-trust { background:#e8f5e9; color:#2e7d32; }
+        .badge-checking { background:#e3f2fd; color:#1565c0; }
+        .badge-savings { background:#e8f5e9; color:#2e7d32; }
+        .badge-mortgage { background:#ffebee; color:#c62828; }
+        .badge-operating { background:#fff8e1; color:#f57f17; }
+
+        /* Institution colors */
+        .inst-dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px; flex-shrink:0; }
+
+        /* Tabs */
+        .tabs { display:flex; gap:0; margin-bottom:20px; border-bottom:2px solid var(--border); }
+        .tab {
+            padding:10px 20px; font-size:13px; font-weight:600; cursor:pointer; color:var(--muted);
+            border-bottom:2px solid transparent; margin-bottom:-2px; transition:.2s;
+        }
+        .tab:hover { color:var(--text); }
+        .tab.active { color:var(--primary); border-bottom-color:var(--primary); }
+
+        /* Search */
+        .search-box {
+            padding:8px 14px; border:1px solid var(--border); border-radius:8px; font-size:13px;
+            width:260px; font-family:inherit; outline:none;
+        }
+        .search-box:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(26,95,74,.1); }
+
+        /* Chart containers */
+        .chart-container { position:relative; height:280px; }
+
+        /* Entity card */
+        .entity-card {
+            background:#fff; border:1px solid var(--border); border-radius:10px; padding:16px;
+            cursor:pointer; transition:.2s; display:flex; flex-direction:column; gap:8px;
+        }
+        .entity-card:hover { box-shadow:0 4px 16px rgba(0,0,0,.1); transform:translateY(-2px); }
+        .entity-name { font-weight:700; font-size:14px; }
+        .entity-type { font-size:11px; color:var(--muted); }
+        .entity-balance { font-size:18px; font-weight:700; color:var(--primary); margin-top:4px; }
+
+        /* Responsive */
+        @media(max-width:768px) {
+            .sidebar { transform:translateX(-100%); }
+            .sidebar.open { transform:translateX(0); }
+            .main { margin-left:0; }
+            .hamburger { display:block; }
+            .page { padding:16px; }
+            .kpi-row { grid-template-columns:1fr 1fr; }
+            .grid-2, .grid-3 { grid-template-columns:1fr; }
+            .topbar { padding:14px 16px; }
+            .search-box { width:100%; }
+        }
+        @media(max-width:480px) {
+            .kpi-row { grid-template-columns:1fr; }
+            .kpi-val { font-size:22px; }
+        }
+    </style>
+</head>
+<body>
+<div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-hdr">
+            <div class="sidebar-logo">NF6</div>
+            <div class="sidebar-sub">Family Office Financial Dashboard</div>
+        </div>
+        <div class="nav-section">Overview</div>
+        <div class="nav-item active" onclick="showPage('dashboard')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            Dashboard
+        </div>
+        <div class="nav-item" onclick="showPage('networth')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+            Net Worth
+        </div>
+        <div class="nav-section">Portfolio</div>
+        <div class="nav-item" onclick="showPage('entities')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+            Entities
+        </div>
+        <div class="nav-item" onclick="showPage('institutions')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/></svg>
+            Institutions
+        </div>
+        <div class="nav-item" onclick="showPage('accounts')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+            All Accounts
+        </div>
+        <div class="nav-section">Operations</div>
+        <div class="nav-item" onclick="showPage('qbo')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>
+            QBO Operating
+        </div>
+        <div class="nav-item" onclick="showPage('investments')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Investments
+        </div>
+        <div class="nav-section" style="margin-top:20px">Account</div>
+        <div style="padding:10px 24px;color:rgba(255,255,255,.4);font-size:12px">Michael Nguyen</div>
+    </aside>
+
+    <div id="overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.3);z-index:99" onclick="document.getElementById('sidebar').classList.remove('open');this.style.display='none'"></div>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="topbar">
+            <div class="topbar-left">
+                <button class="hamburger" onclick="document.getElementById('sidebar').classList.add('open');document.getElementById('overlay').style.display='block'">&#9776;</button>
+                <span style="font-weight:600;font-size:15px">NF6 Family Office</span>
+            </div>
+            <div class="topbar-right">
+                <span>Last Updated: Feb 19, 2026</span>
+                <span style="width:32px;height:32px;background:var(--primary);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">MN</span>
+            </div>
+        </div>
+
+        <!-- ==================== DASHBOARD ==================== -->
+        <div class="page active" id="page-dashboard">
+            <h2 class="page-title">Executive Dashboard</h2>
+            <p class="page-sub">Consolidated view across 20 entities, 9 institutions, 42 accounts | Multi-currency</p>
+
+            <div class="kpi-row" id="dashKpis"></div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-hdr">Assets by Institution</div>
+                    <div class="card-body"><div class="chart-container"><canvas id="chartInstitution"></canvas></div></div>
+                </div>
+                <div class="card">
+                    <div class="card-hdr">Asset Allocation by Type</div>
+                    <div class="card-body"><div class="chart-container"><canvas id="chartAllocation"></canvas></div></div>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-hdr">Currency Exposure (USD Equivalent)</div>
+                    <div class="card-body"><div class="chart-container"><canvas id="chartCurrency"></canvas></div></div>
+                </div>
+                <div class="card">
+                    <div class="card-hdr">Top 10 Accounts by Balance</div>
+                    <div class="card-body"><div class="chart-container"><canvas id="chartTopAccounts"></canvas></div></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-hdr">Geographic Distribution</div>
+                <div class="card-body"><div class="chart-container" style="height:250px"><canvas id="chartGeo"></canvas></div></div>
+            </div>
+        </div>
+
+        <!-- ==================== NET WORTH ==================== -->
+        <div class="page" id="page-networth">
+            <h2 class="page-title">Net Worth Summary</h2>
+            <p class="page-sub">Total assets minus liabilities across all entities</p>
+            <div class="kpi-row" id="nwKpis"></div>
+            <div class="card">
+                <div class="card-hdr">Net Worth Breakdown</div>
+                <div class="card-body">
+                    <table>
+                        <thead><tr><th>Category</th><th class="text-right">USD Value</th><th class="text-right">% of Total</th></tr></thead>
+                        <tbody id="nwTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== ENTITIES ==================== -->
+        <div class="page" id="page-entities">
+            <h2 class="page-title">Entities</h2>
+            <p class="page-sub">20 legal entities across multiple jurisdictions</p>
+            <input class="search-box" id="entitySearch" placeholder="Search entities..." oninput="renderEntities()">
+            <div id="entityGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-top:16px"></div>
+        </div>
+
+        <!-- ==================== INSTITUTIONS ==================== -->
+        <div class="page" id="page-institutions">
+            <h2 class="page-title">Financial Institutions</h2>
+            <p class="page-sub">9 institutions across 3 countries</p>
+            <div id="instGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px"></div>
+        </div>
+
+        <!-- ==================== ALL ACCOUNTS ==================== -->
+        <div class="page" id="page-accounts">
+            <h2 class="page-title">All Accounts</h2>
+            <p class="page-sub">42 accounts across all entities and institutions</p>
+            <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+                <input class="search-box" id="acctSearch" placeholder="Search accounts..." oninput="renderAccounts()">
+                <select class="search-box" id="acctFilter" style="width:180px" onchange="renderAccounts()">
+                    <option value="all">All Institutions</option>
+                </select>
+                <select class="search-box" id="currFilter" style="width:140px" onchange="renderAccounts()">
+                    <option value="all">All Currencies</option>
+                    <option value="USD">USD</option>
+                    <option value="EUR">EUR</option>
+                    <option value="COP">COP</option>
+                </select>
+            </div>
+            <div class="card"><div style="overflow-x:auto">
+                <table>
+                    <thead><tr><th>Account</th><th>Entity</th><th>Institution</th><th>Type</th><th>Currency</th><th class="text-right">Balance</th><th class="text-right">USD Equiv.</th></tr></thead>
+                    <tbody id="acctTable"></tbody>
+                </table>
+            </div></div>
+        </div>
+
+        <!-- ==================== QBO OPERATING ==================== -->
+        <div class="page" id="page-qbo">
+            <h2 class="page-title">QuickBooks Online - Operating Accounts</h2>
+            <p class="page-sub">12 entity operating accounts managed via QBO</p>
+            <div class="kpi-row" id="qboKpis"></div>
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-hdr">QBO Operating Balances</div>
+                    <div class="card-body"><div class="chart-container"><canvas id="chartQBO"></canvas></div></div>
+                </div>
+                <div class="card">
+                    <div class="card-hdr">QBO Accounts</div>
+                    <div class="card-body" style="padding:0">
+                        <table>
+                            <thead><tr><th>Entity</th><th>Account ID</th><th class="text-right">Balance</th></tr></thead>
+                            <tbody id="qboTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== INVESTMENTS ==================== -->
+        <div class="page" id="page-investments">
+            <h2 class="page-title">Investment & Brokerage Accounts</h2>
+            <p class="page-sub">Charles Schwab & J.P. Morgan portfolio overview</p>
+            <div class="kpi-row" id="invKpis"></div>
+            <div class="card">
+                <div class="card-hdr">Brokerage & Investment Accounts</div>
+                <div class="card-body" style="padding:0">
+                    <table>
+                        <thead><tr><th>Account</th><th>Institution</th><th>Type</th><th class="text-right">Balance</th><th class="text-right">Day Change</th></tr></thead>
+                        <tbody id="invTable"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card" style="margin-top:20px">
+                <div class="card-hdr">Portfolio Distribution</div>
+                <div class="card-body"><div class="chart-container"><canvas id="chartInv"></canvas></div></div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script>
+// =============================
+// DATA
+// =============================
+const FX = { USD: 1, EUR: 1.08, COP: 0.0002712 };
+
+const entities = [
+    { id:'e1', name:'Michael Nguyen', type:'Personal', jurisdiction:'US-PR' },
+    { id:'e2', name:'MN Family Trust', type:'Trust', jurisdiction:'US' },
+    { id:'e3', name:'The 2019 MN Family Revocable Trust', type:'Trust', jurisdiction:'US' },
+    { id:'e4', name:'YM PR Investment Group LLC', type:'LLC', jurisdiction:'US-PR' },
+    { id:'e5', name:'MBJ DR INC', type:'Inc', jurisdiction:'US' },
+    { id:'e6', name:'NF USA CA LLC', type:'LLC', jurisdiction:'US-CA' },
+    { id:'e7', name:'NF USA TX LLC', type:'LLC', jurisdiction:'US-TX' },
+    { id:'e8', name:'NF6 Ventures LLC', type:'LLC', jurisdiction:'US' },
+    { id:'e9', name:'Blue Panda Family LP', type:'LP', jurisdiction:'US' },
+    { id:'e10', name:'NGM Woodland Park ASC LLC', type:'LLC', jurisdiction:'US' },
+    { id:'e11', name:'NF6 Joint MGMT LLC', type:'LLC', jurisdiction:'US' },
+    { id:'e12', name:'NF6 Tiger Capital LLC', type:'LLC', jurisdiction:'US' },
+    { id:'e13', name:'TLMND LLC', type:'LLC', jurisdiction:'US' },
+    { id:'e14', name:'NF6 Family Holding LP', type:'LP', jurisdiction:'US' },
+    { id:'e15', name:'NF6 Capital LLC', type:'LLC', jurisdiction:'US' },
+    { id:'e16', name:'BPMGMT LLC', type:'LLC', jurisdiction:'US' },
+    { id:'e17', name:'NF6 Spain Holdings SL', type:'SL', jurisdiction:'Spain' },
+    { id:'e18', name:'NF Europe Holdings 2022 SL', type:'SL', jurisdiction:'Spain' },
+    { id:'e19', name:'Paris Thacko', type:'Company', jurisdiction:'Spain' },
+    { id:'e20', name:'MN Dorado Property', type:'Personal', jurisdiction:'US-PR' },
+];
+
+const institutions = [
+    { id:'i1', name:'FirstBank Puerto Rico', type:'Bank', country:'US-PR', color:'#1a5276' },
+    { id:'i2', name:'Bank of America', type:'Bank', country:'US', color:'#c0392b' },
+    { id:'i3', name:'Chase', type:'Bank', country:'US', color:'#2c3e50' },
+    { id:'i4', name:'J.P. Morgan', type:'Investment Bank', country:'US', color:'#1a3c6e' },
+    { id:'i5', name:'Charles Schwab', type:'Brokerage', country:'US', color:'#00a0df' },
+    { id:'i6', name:'Santander', type:'Bank', country:'Spain', color:'#ec0000' },
+    { id:'i7', name:'Bancolombia', type:'Bank', country:'Colombia', color:'#003DA5' },
+    { id:'i8', name:'Banco de Occidente', type:'Bank', country:'Colombia', color:'#005ca9' },
+    { id:'i9', name:'QuickBooks Online', type:'Accounting', country:'US', color:'#2ca01c' },
+];
+
+const accounts = [
+    // FirstBank PR
+    { id:'a1', name:'Michael Nguyen PMA', number:'030126916', entity:'e1', inst:'i1', type:'Checking', currency:'USD', balance:22.27, liability:false },
+    { id:'a2', name:'YM PR Investment Group LLC', number:'030138337', entity:'e4', inst:'i1', type:'Checking', currency:'USD', balance:227434.12, liability:false },
+    { id:'a3', name:'YM PR Investment Group LLC', number:'030219175', entity:'e4', inst:'i1', type:'Savings', currency:'USD', balance:47960.37, liability:false },
+    { id:'a4', name:'MN Family Trust', number:'030228875', entity:'e2', inst:'i1', type:'Checking', currency:'USD', balance:2322.44, liability:false },
+    { id:'a5', name:'2019 MN Family Revocable Trust', number:'030267013', entity:'e3', inst:'i1', type:'Checking', currency:'USD', balance:50000.00, liability:false },
+    { id:'a6', name:'Michael Nguyen PH', number:'030290252', entity:'e1', inst:'i1', type:'Checking', currency:'USD', balance:1.59, liability:false },
+    // Bank of America
+    { id:'a7', name:'BoFA Personal Banking', number:'****8651', entity:'e1', inst:'i2', type:'Checking', currency:'USD', balance:5010.86, liability:false },
+    // Chase
+    { id:'a8', name:'MN Personal Checking', number:'****0451', entity:'e1', inst:'i3', type:'Checking', currency:'USD', balance:5000.00, liability:false },
+    { id:'a9', name:'MN - Dorado PH', number:'****6179', entity:'e20', inst:'i3', type:'Checking', currency:'USD', balance:22347.06, liability:false },
+    { id:'a10', name:'MN Personal Savings', number:'****0451', entity:'e1', inst:'i3', type:'Savings', currency:'USD', balance:4199.73, liability:false },
+    { id:'a11', name:'Mortgage Loan', number:'****3064', entity:'e20', inst:'i3', type:'Mortgage', currency:'USD', balance:2494214.24, liability:true },
+    // J.P. Morgan
+    { id:'a12', name:'NF6 Tiger Capital LLC', number:'****2502', entity:'e12', inst:'i4', type:'Investment', currency:'USD', balance:10.00, liability:false },
+    { id:'a13', name:'NF6 Tiger Capital LLC', number:'****4974', entity:'e12', inst:'i4', type:'Investment', currency:'USD', balance:0.00, liability:false },
+    // Charles Schwab - Brokerage
+    { id:'a14', name:'NF6 Capital', number:'Z25411126', entity:'e15', inst:'i5', type:'Brokerage', currency:'USD', balance:1565.04, liability:false, dayChange:-4.42, dayPct:-0.28 },
+    { id:'a15', name:'MN Personal', number:'Z27319007', entity:'e1', inst:'i5', type:'Brokerage', currency:'USD', balance:1809397.56, liability:false, dayChange:21326.35, dayPct:1.19 },
+    { id:'a16', name:'TLMND', number:'Z27516454', entity:'e13', inst:'i5', type:'Brokerage', currency:'USD', balance:179907.47, liability:false, dayChange:0.64, dayPct:0.00 },
+    { id:'a17', name:'NF6 Tiger Capital VOO', number:'Z29628205', entity:'e12', inst:'i5', type:'Brokerage', currency:'USD', balance:2130.42, liability:false, dayChange:-0.67, dayPct:-0.03 },
+    { id:'a18', name:'NF6 Tiger Capital Dividends', number:'Z40362104', entity:'e12', inst:'i5', type:'Brokerage', currency:'USD', balance:3580.71, liability:false, dayChange:-8.66, dayPct:-0.24 },
+    // Charles Schwab - Investment
+    { id:'a19', name:'MN Personal Investment', number:'****748', entity:'e1', inst:'i5', type:'Investment', currency:'USD', balance:10996.90, liability:false },
+    { id:'a20', name:'NF6 Family Holding', number:'****316', entity:'e14', inst:'i5', type:'Brokerage', currency:'USD', balance:324.79, liability:false },
+    { id:'a21', name:'NF6 Tiger Capital', number:'****259', entity:'e12', inst:'i5', type:'Brokerage', currency:'USD', balance:1378.59, liability:false, dayChange:-2.56, dayPct:-0.19 },
+    // Charles Schwab - Trust
+    { id:'a22', name:'2019 MN Family Trust', number:'****196', entity:'e3', inst:'i5', type:'Trust', currency:'USD', balance:0.00, liability:false },
+    { id:'a23', name:'MN Family Trust', number:'****805', entity:'e2', inst:'i5', type:'Trust', currency:'USD', balance:0.00, liability:false },
+    // Santander
+    { id:'a24', name:'NF6 Spain Holdings SL', number:'ES09****8120', entity:'e17', inst:'i6', type:'Checking', currency:'EUR', balance:1248.48, liability:false },
+    { id:'a25', name:'NF Europe Holdings 2022 SL', number:'ES44****8138', entity:'e18', inst:'i6', type:'Checking', currency:'EUR', balance:5730.70, liability:false },
+    { id:'a26', name:'Paris Thacko', number:'ES66****0523', entity:'e19', inst:'i6', type:'Checking', currency:'EUR', balance:2731.81, liability:false },
+    { id:'a27', name:'NF Europe Holdings 2022 SL USD', number:'ES49****1830', entity:'e18', inst:'i6', type:'Checking', currency:'USD', balance:2.07, liability:false },
+    // Bancolombia
+    { id:'a28', name:'Bancolombia Savings', number:'029-000177-34', entity:'e1', inst:'i7', type:'Savings', currency:'COP', balance:49449012.26, liability:false },
+    { id:'a29', name:'Bancolombia Additional', number:'029-****-XX', entity:'e1', inst:'i7', type:'Savings', currency:'COP', balance:150000000, liability:false },
+    // Banco de Occidente
+    { id:'a30', name:'Occidente Holdings', number:'OCC-****', entity:'e1', inst:'i8', type:'Savings', currency:'COP', balance:127420185.74, liability:false },
+    // QBO
+    { id:'a31', name:'MBJ DR INC Operating', number:'QBO-MBJ', entity:'e5', inst:'i9', type:'Operating', currency:'USD', balance:9775.00, liability:false },
+    { id:'a32', name:'NF USA CA LLC Operating', number:'QBO-NFCA', entity:'e6', inst:'i9', type:'Operating', currency:'USD', balance:200.00, liability:false },
+    { id:'a33', name:'NF USA TX LLC Operating', number:'QBO-NFTX', entity:'e7', inst:'i9', type:'Operating', currency:'USD', balance:30535.86, liability:false },
+    { id:'a34', name:'NF6 Ventures LLC Operating', number:'QBO-VENT', entity:'e8', inst:'i9', type:'Operating', currency:'USD', balance:301.64, liability:false },
+    { id:'a35', name:'Blue Panda FLP Operating', number:'QBO-BPFLP', entity:'e9', inst:'i9', type:'Operating', currency:'USD', balance:1715.00, liability:false },
+    { id:'a36', name:'NGM Woodland Park Operating', number:'QBO-NGM', entity:'e10', inst:'i9', type:'Operating', currency:'USD', balance:2550.55, liability:false },
+    { id:'a37', name:'NF6 Joint MGMT Operating', number:'QBO-JMGMT', entity:'e11', inst:'i9', type:'Operating', currency:'USD', balance:75458.85, liability:false },
+    { id:'a38', name:'NF6 Tiger Capital Operating', number:'QBO-TIGER', entity:'e12', inst:'i9', type:'Operating', currency:'USD', balance:1448.00, liability:false },
+    { id:'a39', name:'TLMND LLC Operating', number:'QBO-TLMND', entity:'e13', inst:'i9', type:'Operating', currency:'USD', balance:67112.40, liability:false },
+    { id:'a40', name:'NF6 Family Holding LP Operating', number:'QBO-NFHOLD', entity:'e14', inst:'i9', type:'Operating', currency:'USD', balance:1013.00, liability:false },
+    { id:'a41', name:'NF6 Capital LLC Operating', number:'QBO-NFCAP', entity:'e15', inst:'i9', type:'Operating', currency:'USD', balance:1715.00, liability:false },
+    { id:'a42', name:'BPMGMT LLC Operating', number:'QBO-BPMGMT', entity:'e16', inst:'i9', type:'Operating', currency:'USD', balance:2641.33, liability:false },
+];
+
+// =============================
+// HELPERS
+// =============================
+function toUSD(balance, currency) { return balance * (FX[currency] || 1); }
+function fmt(n) { return '$' + Math.abs(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function fmtShort(n) {
+    if (Math.abs(n) >= 1e6) return '$' + (n/1e6).toFixed(2) + 'M';
+    if (Math.abs(n) >= 1e3) return '$' + (n/1e3).toFixed(1) + 'K';
+    return '$' + n.toFixed(2);
+}
+function fmtLocal(balance, currency) {
+    if (currency === 'COP') return balance.toLocaleString('en-US', {minimumFractionDigits:2}) + ' COP';
+    if (currency === 'EUR') return '\u20AC' + balance.toLocaleString('en-US', {minimumFractionDigits:2});
+    return '$' + balance.toLocaleString('en-US', {minimumFractionDigits:2});
+}
+function getEntity(id) { return entities.find(e => e.id === id); }
+function getInst(id) { return institutions.find(i => i.id === id); }
+
+const totalAssets = accounts.filter(a => !a.liability).reduce((s,a) => s + toUSD(a.balance, a.currency), 0);
+const totalLiabilities = accounts.filter(a => a.liability).reduce((s,a) => s + toUSD(a.balance, a.currency), 0);
+const netWorth = totalAssets - totalLiabilities;
+
+// =============================
+// NAVIGATION
+// =============================
+function showPage(name) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + name).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('overlay').style.display = 'none';
+    window.scrollTo(0,0);
+    if (name === 'entities') renderEntities();
+    if (name === 'institutions') renderInstitutions();
+    if (name === 'accounts') renderAccounts();
+    if (name === 'qbo') renderQBO();
+    if (name === 'investments') renderInvestments();
+    if (name === 'networth') renderNetWorth();
+}
+
+// =============================
+// DASHBOARD
+// =============================
+function renderDashboard() {
+    const entityCount = entities.length;
+    const instCount = institutions.length;
+    const acctCount = accounts.length;
+    const dayChange = accounts.reduce((s,a) => s + (a.dayChange || 0), 0);
+
+    document.getElementById('dashKpis').innerHTML = `
+        <div class="kpi green"><div class="kpi-label">Net Worth</div><div class="kpi-val green">${fmtShort(netWorth)}</div><div class="kpi-detail">Assets - Liabilities</div></div>
+        <div class="kpi"><div class="kpi-label">Total Assets</div><div class="kpi-val">${fmtShort(totalAssets)}</div><div class="kpi-detail">${acctCount - accounts.filter(a=>a.liability).length} asset accounts</div></div>
+        <div class="kpi red"><div class="kpi-label">Total Liabilities</div><div class="kpi-val red">${fmtShort(totalLiabilities)}</div><div class="kpi-detail">${accounts.filter(a=>a.liability).length} liability accounts</div></div>
+        <div class="kpi gold"><div class="kpi-label">Day Change</div><div class="kpi-val ${dayChange >= 0 ? 'green' : 'red'}">${dayChange >= 0 ? '+' : '-'}${fmtShort(Math.abs(dayChange))}</div><div class="kpi-detail">Schwab brokerage</div></div>
+        <div class="kpi"><div class="kpi-label">Entities</div><div class="kpi-val">${entityCount}</div><div class="kpi-detail">Legal structures</div></div>
+        <div class="kpi"><div class="kpi-label">Institutions</div><div class="kpi-val">${instCount}</div><div class="kpi-detail">3 countries</div></div>
+    `;
+
+    // Institution chart
+    const instTotals = {};
+    accounts.filter(a => !a.liability).forEach(a => {
+        const inst = getInst(a.inst);
+        instTotals[inst.name] = (instTotals[inst.name] || 0) + toUSD(a.balance, a.currency);
+    });
+    const instLabels = Object.keys(instTotals).sort((a,b) => instTotals[b] - instTotals[a]);
+    const instColors = instLabels.map(l => institutions.find(i => i.name === l).color);
+
+    new Chart(document.getElementById('chartInstitution'), {
+        type: 'doughnut',
+        data: { labels: instLabels, datasets: [{ data: instLabels.map(l => instTotals[l]), backgroundColor: instColors, borderWidth: 2 }] },
+        options: { responsive:true, maintainAspectRatio:false, plugins: { legend: { position:'right', labels: { font:{size:11}, padding:8 } } } }
+    });
+
+    // Allocation chart
+    const typeTotals = {};
+    accounts.filter(a => !a.liability).forEach(a => {
+        typeTotals[a.type] = (typeTotals[a.type] || 0) + toUSD(a.balance, a.currency);
+    });
+    const typeLabels = Object.keys(typeTotals).sort((a,b) => typeTotals[b] - typeTotals[a]);
+    const typeColors = ['#1a5f4a','#2d7a5e','#3498db','#9b59b6','#e67e22','#1abc9c','#e74c3c','#f39c12'];
+
+    new Chart(document.getElementById('chartAllocation'), {
+        type: 'doughnut',
+        data: { labels: typeLabels, datasets: [{ data: typeLabels.map(l => typeTotals[l]), backgroundColor: typeColors, borderWidth: 2 }] },
+        options: { responsive:true, maintainAspectRatio:false, plugins: { legend: { position:'right', labels: { font:{size:11}, padding:8 } } } }
+    });
+
+    // Currency chart
+    const currTotals = {};
+    accounts.filter(a => !a.liability).forEach(a => {
+        currTotals[a.currency] = (currTotals[a.currency] || 0) + toUSD(a.balance, a.currency);
+    });
+    new Chart(document.getElementById('chartCurrency'), {
+        type: 'bar',
+        data: {
+            labels: Object.keys(currTotals),
+            datasets: [{ label:'USD Equivalent', data: Object.values(currTotals), backgroundColor: ['#1a5f4a','#c3a54e','#e67e22'], borderRadius: 6 }]
+        },
+        options: { responsive:true, maintainAspectRatio:false, plugins: { legend:{display:false} }, scales: { y: { ticks: { callback: v => fmtShort(v) } } } }
+    });
+
+    // Top 10 accounts
+    const topAccts = accounts.filter(a => !a.liability).map(a => ({...a, usd: toUSD(a.balance, a.currency)})).sort((a,b) => b.usd - a.usd).slice(0, 10);
+    new Chart(document.getElementById('chartTopAccounts'), {
+        type: 'bar',
+        data: {
+            labels: topAccts.map(a => a.name),
+            datasets: [{ data: topAccts.map(a => a.usd), backgroundColor: topAccts.map(a => getInst(a.inst).color), borderRadius: 4 }]
+        },
+        options: { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins: { legend:{display:false} }, scales: { x: { ticks: { callback: v => fmtShort(v) } } } }
+    });
+
+    // Geo chart
+    const geoTotals = {};
+    accounts.filter(a => !a.liability).forEach(a => {
+        const c = getInst(a.inst).country;
+        geoTotals[c] = (geoTotals[c] || 0) + toUSD(a.balance, a.currency);
+    });
+    new Chart(document.getElementById('chartGeo'), {
+        type: 'bar',
+        data: {
+            labels: Object.keys(geoTotals),
+            datasets: [{ label:'Total USD', data: Object.values(geoTotals), backgroundColor: ['#1a5f4a','#c3a54e','#3498db','#e67e22','#9b59b6'], borderRadius: 6 }]
+        },
+        options: { responsive:true, maintainAspectRatio:false, plugins: { legend:{display:false} }, scales: { y: { ticks: { callback: v => fmtShort(v) } } } }
+    });
+}
+
+// =============================
+// NET WORTH
+// =============================
+function renderNetWorth() {
+    document.getElementById('nwKpis').innerHTML = `
+        <div class="kpi green"><div class="kpi-label">Net Worth</div><div class="kpi-val green">${fmt(netWorth)}</div></div>
+        <div class="kpi"><div class="kpi-label">Total Assets</div><div class="kpi-val">${fmt(totalAssets)}</div></div>
+        <div class="kpi red"><div class="kpi-label">Total Liabilities</div><div class="kpi-val red">${fmt(totalLiabilities)}</div></div>
+    `;
+
+    const categories = {};
+    accounts.forEach(a => {
+        const key = a.liability ? 'Liabilities - ' + a.type : 'Assets - ' + a.type;
+        categories[key] = (categories[key] || 0) + toUSD(a.balance, a.currency);
+    });
+    const sorted = Object.entries(categories).sort((a,b) => b[1] - a[1]);
+    const assetTotal = totalAssets + totalLiabilities;
+
+    document.getElementById('nwTable').innerHTML = sorted.map(([cat, val]) => {
+        const isLiab = cat.startsWith('Liabilities');
+        return `<tr>
+            <td class="fw-600">${cat}</td>
+            <td class="text-right fw-600 ${isLiab ? 'text-red' : ''}">${isLiab ? '-' : ''}${fmt(val)}</td>
+            <td class="text-right text-muted">${(val / assetTotal * 100).toFixed(1)}%</td>
+        </tr>`;
+    }).join('') + `
+        <tr style="background:#f0f5f3;font-weight:700">
+            <td>NET WORTH</td>
+            <td class="text-right text-green">${fmt(netWorth)}</td>
+            <td class="text-right">100%</td>
+        </tr>`;
+}
+
+// =============================
+// ENTITIES
+// =============================
+function renderEntities() {
+    const q = (document.getElementById('entitySearch')?.value || '').toLowerCase();
+    const filtered = entities.filter(e => !q || e.name.toLowerCase().includes(q) || e.type.toLowerCase().includes(q));
+
+    document.getElementById('entityGrid').innerHTML = filtered.map(e => {
+        const eAccts = accounts.filter(a => a.entity === e.id);
+        const assets = eAccts.filter(a => !a.liability).reduce((s,a) => s + toUSD(a.balance, a.currency), 0);
+        const liabs = eAccts.filter(a => a.liability).reduce((s,a) => s + toUSD(a.balance, a.currency), 0);
+        const net = assets - liabs;
+        return `<div class="entity-card">
+            <div style="display:flex;justify-content:space-between;align-items:start">
+                <div><div class="entity-name">${e.name}</div><div class="entity-type">${e.type} | ${e.jurisdiction}</div></div>
+                <span class="badge badge-${e.type === 'Trust' ? 'trust' : 'bank'}">${e.type}</span>
+            </div>
+            <div class="entity-balance">${net < 0 ? '-' : ''}${fmt(Math.abs(net))}</div>
+            <div style="display:flex;gap:16px;font-size:11px;color:var(--muted)">
+                <span>${eAccts.length} account${eAccts.length !== 1 ? 's' : ''}</span>
+                ${liabs > 0 ? `<span class="text-red">Liab: ${fmt(liabs)}</span>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// =============================
+// INSTITUTIONS
+// =============================
+function renderInstitutions() {
+    document.getElementById('instGrid').innerHTML = institutions.map(inst => {
+        const iAccts = accounts.filter(a => a.inst === inst.id);
+        const assets = iAccts.filter(a => !a.liability).reduce((s,a) => s + toUSD(a.balance, a.currency), 0);
+        const liabs = iAccts.filter(a => a.liability).reduce((s,a) => s + toUSD(a.balance, a.currency), 0);
+        return `<div class="card">
+            <div style="padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px">
+                <span class="inst-dot" style="background:${inst.color};width:14px;height:14px"></span>
+                <div>
+                    <div class="fw-600" style="font-size:15px">${inst.name}</div>
+                    <div style="font-size:11px;color:var(--muted)">${inst.type} | ${inst.country}</div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+                    <div><div class="kpi-label">Accounts</div><div class="fw-600" style="font-size:18px">${iAccts.length}</div></div>
+                    <div><div class="kpi-label">Total Assets</div><div class="fw-600 text-green" style="font-size:18px">${fmtShort(assets)}</div></div>
+                    ${liabs > 0 ? `<div><div class="kpi-label">Liabilities</div><div class="fw-600 text-red" style="font-size:18px">${fmtShort(liabs)}</div></div>` : `<div><div class="kpi-label">Net</div><div class="fw-600" style="font-size:18px">${fmtShort(assets)}</div></div>`}
+                </div>
+                <table style="font-size:12px">
+                    <thead><tr><th style="font-size:9px">Account</th><th style="font-size:9px">Type</th><th style="font-size:9px" class="text-right">Balance</th></tr></thead>
+                    <tbody>${iAccts.map(a => `<tr>
+                        <td>${a.name}</td>
+                        <td><span class="badge badge-${a.type.toLowerCase()}">${a.type}</span></td>
+                        <td class="text-right fw-600 ${a.liability ? 'text-red' : ''}">${a.liability ? '-' : ''}${fmtLocal(a.balance, a.currency)}</td>
+                    </tr>`).join('')}</tbody>
+                </table>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// =============================
+// ALL ACCOUNTS
+// =============================
+function renderAccounts() {
+    const q = (document.getElementById('acctSearch')?.value || '').toLowerCase();
+    const instF = document.getElementById('acctFilter')?.value || 'all';
+    const currF = document.getElementById('currFilter')?.value || 'all';
+
+    // Populate institution filter
+    const sel = document.getElementById('acctFilter');
+    if (sel && sel.options.length <= 1) {
+        institutions.forEach(i => { const o = document.createElement('option'); o.value = i.id; o.textContent = i.name; sel.appendChild(o); });
+    }
+
+    const filtered = accounts.filter(a => {
+        if (q && !a.name.toLowerCase().includes(q) && !a.number.toLowerCase().includes(q)) return false;
+        if (instF !== 'all' && a.inst !== instF) return false;
+        if (currF !== 'all' && a.currency !== currF) return false;
+        return true;
+    });
+
+    document.getElementById('acctTable').innerHTML = filtered.map(a => {
+        const ent = getEntity(a.entity);
+        const inst = getInst(a.inst);
+        const usd = toUSD(a.balance, a.currency);
+        return `<tr>
+            <td><div class="fw-600">${a.name}</div><div style="font-size:11px;color:var(--muted)">${a.number}</div></td>
+            <td style="font-size:12px">${ent.name}</td>
+            <td><span class="inst-dot" style="background:${inst.color}"></span>${inst.name}</td>
+            <td><span class="badge badge-${a.type.toLowerCase()}">${a.type}</span></td>
+            <td>${a.currency}</td>
+            <td class="text-right fw-600 ${a.liability ? 'text-red' : ''}">${a.liability ? '-' : ''}${fmtLocal(a.balance, a.currency)}</td>
+            <td class="text-right fw-600 ${a.liability ? 'text-red' : ''}">${a.liability ? '-' : ''}${fmt(usd)}</td>
+        </tr>`;
+    }).join('');
+}
+
+// =============================
+// QBO
+// =============================
+function renderQBO() {
+    const qboAccts = accounts.filter(a => a.inst === 'i9');
+    const total = qboAccts.reduce((s,a) => s + a.balance, 0);
+    const top = qboAccts.reduce((max,a) => a.balance > max.balance ? a : max, qboAccts[0]);
+    const avg = total / qboAccts.length;
+
+    document.getElementById('qboKpis').innerHTML = `
+        <div class="kpi green"><div class="kpi-label">Total QBO Operating</div><div class="kpi-val green">${fmt(total)}</div><div class="kpi-detail">${qboAccts.length} accounts</div></div>
+        <div class="kpi gold"><div class="kpi-label">Largest Balance</div><div class="kpi-val">${fmt(top.balance)}</div><div class="kpi-detail">${top.name}</div></div>
+        <div class="kpi"><div class="kpi-label">Average Balance</div><div class="kpi-val">${fmt(avg)}</div></div>
+    `;
+
+    const sorted = [...qboAccts].sort((a,b) => b.balance - a.balance);
+
+    new Chart(document.getElementById('chartQBO'), {
+        type: 'bar',
+        data: {
+            labels: sorted.map(a => getEntity(a.entity).name),
+            datasets: [{ data: sorted.map(a => a.balance), backgroundColor: '#2ca01c', borderRadius: 6 }]
+        },
+        options: { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins: { legend:{display:false} }, scales: { x: { ticks: { callback: v => fmtShort(v) } } } }
+    });
+
+    document.getElementById('qboTable').innerHTML = sorted.map(a => `<tr>
+        <td class="fw-600">${getEntity(a.entity).name}</td>
+        <td style="font-size:12px;color:var(--muted);font-family:monospace">${a.number}</td>
+        <td class="text-right fw-600">${fmt(a.balance)}</td>
+    </tr>`).join('') + `<tr style="background:#f0f5f3;font-weight:700">
+        <td>TOTAL</td><td></td><td class="text-right">${fmt(total)}</td>
+    </tr>`;
+}
+
+// =============================
+// INVESTMENTS
+// =============================
+function renderInvestments() {
+    const invAccts = accounts.filter(a => (a.inst === 'i5' || a.inst === 'i4') && !a.liability);
+    const total = invAccts.reduce((s,a) => s + a.balance, 0);
+    const dayTotal = invAccts.reduce((s,a) => s + (a.dayChange || 0), 0);
+
+    document.getElementById('invKpis').innerHTML = `
+        <div class="kpi"><div class="kpi-label">Total Investment Value</div><div class="kpi-val">${fmt(total)}</div><div class="kpi-detail">${invAccts.length} accounts</div></div>
+        <div class="kpi ${dayTotal >= 0 ? 'green' : 'red'}"><div class="kpi-label">Total Day Change</div><div class="kpi-val ${dayTotal >= 0 ? 'green' : 'red'}">${dayTotal >= 0 ? '+' : ''}${fmt(dayTotal)}</div></div>
+        <div class="kpi gold"><div class="kpi-label">% of Net Worth</div><div class="kpi-val">${(total / netWorth * 100).toFixed(1)}%</div></div>
+    `;
+
+    const sorted = [...invAccts].sort((a,b) => b.balance - a.balance);
+
+    document.getElementById('invTable').innerHTML = sorted.map(a => {
+        const inst = getInst(a.inst);
+        const dc = a.dayChange || 0;
+        const dp = a.dayPct || 0;
+        return `<tr>
+            <td><div class="fw-600">${a.name}</div><div style="font-size:11px;color:var(--muted)">${a.number}</div></td>
+            <td><span class="inst-dot" style="background:${inst.color}"></span>${inst.name}</td>
+            <td><span class="badge badge-${a.type.toLowerCase()}">${a.type}</span></td>
+            <td class="text-right fw-600">${fmt(a.balance)}</td>
+            <td class="text-right fw-600 ${dc >= 0 ? 'text-green' : 'text-red'}">${dc !== 0 ? (dc > 0 ? '+' : '') + fmt(dc) + ' (' + (dp > 0 ? '+' : '') + dp.toFixed(2) + '%)' : '-'}</td>
+        </tr>`;
+    }).join('');
+
+    const chartAccts = sorted.filter(a => a.balance > 0);
+    new Chart(document.getElementById('chartInv'), {
+        type: 'doughnut',
+        data: {
+            labels: chartAccts.map(a => a.name),
+            datasets: [{ data: chartAccts.map(a => a.balance), backgroundColor: ['#1a5f4a','#2d7a5e','#3498db','#9b59b6','#e67e22','#1abc9c','#c3a54e','#e74c3c','#34495e','#16a085'], borderWidth: 2 }]
+        },
+        options: { responsive:true, maintainAspectRatio:false, plugins: { legend: { position:'right', labels: { font:{size:11}, padding:8 } } } }
+    });
+}
+
+// =============================
+// INIT
+// =============================
+renderDashboard();
+</script>
+</body>
+</html>
