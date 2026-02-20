@@ -6,9 +6,15 @@ const { v4: uuidv4 } = require('uuid');
 const { getStore, updateStore } = require('./store');
 const { generateDemoData } = require('./seed-demo');
 
+const path = require('path');
+
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// In production, serve the React build
+const clientBuildPath = path.join(__dirname, '..', 'client', 'build');
+app.use(express.static(clientBuildPath));
 
 // Plaid client setup
 const configuration = new Configuration({
@@ -485,8 +491,19 @@ app.post('/api/reset', (req, res) => {
   res.json({ success: true });
 });
 
+// Serve React app for all non-API routes (must be after all API routes)
+const fs = require('fs');
+app.get('*', (req, res) => {
+  const indexPath = path.join(clientBuildPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(200).send('API is running. Build the React client to serve the frontend.');
+  }
+});
+
 const PORT = process.env.PORT || 8000;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   // Auto-seed demo data if store is empty
   const store = getStore();
   if (store.companies.length === 0) {
