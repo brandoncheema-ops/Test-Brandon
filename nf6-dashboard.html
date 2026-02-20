@@ -166,6 +166,40 @@ tr:hover{background:var(--hover)}
 .pill{padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;transition:all .2s}
 .pill.active{background:var(--pri);color:#fff;border-color:var(--pri)}
 
+/* Upload Portal */
+.up-modal{max-width:540px}
+.up-guest-hdr{display:flex;align-items:center;gap:14px;padding-bottom:16px;border-bottom:1px solid var(--border);margin-bottom:20px}
+.up-guest-name{font-size:18px;font-weight:700}
+.up-guest-meta{font-size:12px;color:var(--muted)}
+.up-doc-section{margin-bottom:24px}
+.up-doc-title{font-size:14px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.up-dropzone{border:2px dashed var(--border);border-radius:var(--r);padding:28px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg);position:relative}
+.up-dropzone:hover,.up-dropzone.dragover{border-color:var(--pri);background:rgba(26,95,74,.04)}
+.up-dropzone input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.up-dz-icon{font-size:28px;color:var(--muted);margin-bottom:6px}
+.up-dz-text{font-size:13px;color:var(--muted);font-weight:500}
+.up-dz-hint{font-size:11px;color:var(--muted);margin-top:4px;opacity:.7}
+.up-file-card{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);margin-top:8px}
+.up-file-icon{width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0}
+.up-file-icon.pdf{background:#fce4ec;color:#c62828}
+.up-file-icon.img{background:#e3f2fd;color:#1565c0}
+.up-file-icon.doc{background:#e8f5e9;color:#2e7d32}
+.up-file-icon.other{background:#eceff1;color:#546e7a}
+.up-file-info{flex:1;min-width:0}
+.up-file-name{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.up-file-size{font-size:11px;color:var(--muted)}
+.up-file-date{font-size:10px;color:var(--muted)}
+.up-file-acts{display:flex;gap:6px;flex-shrink:0}
+.up-file-acts button{width:32px;height:32px;border-radius:6px;border:1px solid var(--border);background:var(--card);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all .2s;color:var(--text)}
+.up-file-acts button:hover{background:var(--hover)}
+.up-file-acts button.del:hover{background:#fce4ec;color:#c62828;border-color:#f8bbd0}
+.up-progress{height:4px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden}
+.up-progress-fill{height:100%;background:var(--pri);border-radius:2px;transition:width .4s ease}
+.up-summary{display:flex;gap:12px;padding:16px 0;border-top:1px solid var(--border);margin-top:8px}
+.up-summary-item{flex:1;text-align:center}
+.up-summary-num{font-size:22px;font-weight:700}
+.up-summary-label{font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:600;letter-spacing:.5px}
+
 /* Bottom nav */
 .bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--card);border-top:1px solid var(--border);box-shadow:0 -2px 10px rgba(0,0,0,.08)}
 .bn-inner{display:flex;justify-content:space-around;max-width:500px;margin:0 auto}
@@ -384,6 +418,17 @@ tr:hover{background:var(--hover)}
 </div>
 </div>
 
+<!-- Upload Portal Modal -->
+<div class="modal-ov" id="upModal" style="display:none" onclick="if(event.target===this)closeUpModal()">
+<div class="modal up-modal">
+  <div class="modal-h">
+    <h3>Document Upload Portal</h3>
+    <button class="modal-x" onclick="closeUpModal()">&times;</button>
+  </div>
+  <div class="modal-b" id="upBody"></div>
+</div>
+</div>
+
 <script>
 // ── DATA ──
 var prop={name:'Villa Lynn',loc:'Dorado, PR',type:'Villa',beds:4,baths:3,maxG:8,fee:20,clean:250,amenities:['Pool','Beach Access','Wi-Fi','A/C','Full Kitchen','Ocean View']};
@@ -595,9 +640,14 @@ function renderComp(){
       var icon=v===1?'<span class="doc-icon ok">&#10003;</span>':v===0?'<span class="doc-icon miss">&#10007;</span>':'<span class="doc-icon na">&mdash;</span>';
       var label=v===1?'Available':v===0?'Missing':'N/A';
       var badge=v===1?'b-ok':v===0?'b-err':'b-na';
-      var action=v===0?'<button class="btn btn-p btn-sm" onclick="markDoc('+b.id+',\''+k+'\')">Upload</button>':'';
+      // Show file info if uploaded
+      var stored=docStore[docStoreKey(b.id,k)];
+      var fileInfo=stored?'<span style="font-size:10px;color:var(--muted);margin-left:4px" title="'+stored.name+'">'+stored.name.substring(0,20)+(stored.name.length>20?'...':'')+'</span>':'';
+      var action='';
+      if(v===0)action='<button class="btn btn-p btn-sm" onclick="openUpModal('+b.id+')">Upload</button>';
+      else if(v===1&&stored)action='<button class="btn btn-o btn-sm" onclick="viewDoc('+b.id+',\''+k+'\')" style="padding:5px 8px" title="View"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>';
       return'<div class="doc-row">'+
-        '<div class="doc-name">'+icon+docNames[i]+'</div>'+
+        '<div class="doc-name">'+icon+docNames[i]+fileInfo+'</div>'+
         '<div style="display:flex;align-items:center;gap:8px"><span class="badge '+badge+'">'+label+'</span>'+action+'</div></div>'
     }).join('');
 
@@ -612,14 +662,148 @@ function renderComp(){
       '<div class="comp-bar"><div class="comp-bar-fill" style="width:'+bPct+'%;background:'+col+'"></div></div>'+
       docRows+
       (b.note?'<div class="note-tag" style="margin-top:12px">'+b.note+'</div>':'')+
-      (hasMissing?'<div class="comp-actions"><button class="btn btn-o btn-sm" onclick="sendReminder(\''+b.g.replace(/'/g,"\\'")+'\')">Send Reminder</button></div>':'')+
-      '</div>'
+      '<div class="comp-actions">'+
+      '<button class="btn btn-p btn-sm" onclick="openUpModal('+b.id+')">Manage Documents</button>'+
+      (hasMissing?'<button class="btn btn-o btn-sm" onclick="sendReminder(\''+b.g.replace(/'/g,"\\'")+'\')">Send Reminder</button>':'')+
+      '</div></div>'
   }).join('')||(compFilt!=='all'?'<div style="text-align:center;padding:40px;color:var(--muted)">No guests match this filter.</div>':'');
 }
-function markDoc(id,k){
-  var b=B.find(function(x){return x.id===id});
-  if(b){b.docs[k]=1;renderComp()}
+// ── UPLOAD PORTAL ──
+var docStore={};
+function loadDocStore(){try{docStore=JSON.parse(localStorage.getItem('nf6_docs')||'{}');}catch(e){docStore={}}
+  // Sync doc flags from store
+  B.forEach(function(b){
+    docKeys.forEach(function(k){
+      var key=b.id+'_'+k;
+      if(docStore[key]&&b.docs[k]===0)b.docs[k]=1;
+    });
+  });
 }
+function saveDocStore(){try{localStorage.setItem('nf6_docs',JSON.stringify(docStore))}catch(e){}}
+function docStoreKey(bid,dk){return bid+'_'+dk}
+function fmtSize(bytes){if(bytes<1024)return bytes+' B';if(bytes<1048576)return(bytes/1024).toFixed(1)+' KB';return(bytes/1048576).toFixed(1)+' MB'}
+function fileIconClass(name){var ext=(name.split('.').pop()||'').toLowerCase();if(ext==='pdf')return'pdf';if(['jpg','jpeg','png','gif','webp','svg'].indexOf(ext)>=0)return'img';if(['doc','docx'].indexOf(ext)>=0)return'doc';return'other'}
+function fileIconLabel(name){var ext=(name.split('.').pop()||'').toLowerCase();if(ext==='pdf')return'PDF';if(['jpg','jpeg','png','gif','webp','svg'].indexOf(ext)>=0)return'IMG';if(['doc','docx'].indexOf(ext)>=0)return'DOC';return'FILE'}
+
+var upBookingId=null;
+function openUpModal(bid){
+  upBookingId=bid;
+  var b=B.find(function(x){return x.id===bid});if(!b)return;
+  var html='<div class="up-guest-hdr">'+
+    '<div class="avatar" style="background:'+gc(b.g)+'">'+initials(b.g)+'</div>'+
+    '<div><div class="up-guest-name">'+b.g+'</div><div class="up-guest-meta">'+Ds(b.ci)+' - '+Ds(b.co)+' &bull; '+b.n+' nights &bull; '+b.yr+'</div></div></div>';
+
+  // Summary
+  var totalR=0,haveR=0;
+  docKeys.forEach(function(k){if(b.docs[k]!==-1){totalR++;if(b.docs[k]===1)haveR++}});
+  var pct=totalR?Math.round(haveR/totalR*100):100;
+  var col=pct===100?'var(--ok)':pct>=50?'var(--warn)':'var(--err)';
+  html+='<div class="up-summary"><div class="up-summary-item"><div class="up-summary-num" style="color:'+col+'">'+pct+'%</div><div class="up-summary-label">Complete</div></div><div class="up-summary-item"><div class="up-summary-num" style="color:var(--ok)">'+haveR+'</div><div class="up-summary-label">Uploaded</div></div><div class="up-summary-item"><div class="up-summary-num" style="color:var(--err)">'+(totalR-haveR)+'</div><div class="up-summary-label">Missing</div></div></div>';
+
+  // Doc sections
+  docKeys.forEach(function(k,i){
+    if(b.docs[k]===-1)return; // skip N/A
+    var key=docStoreKey(b.id,k);
+    var stored=docStore[key];
+    html+='<div class="up-doc-section"><div class="up-doc-title">';
+    if(b.docs[k]===1)html+='<span class="doc-icon ok">&#10003;</span>';
+    else html+='<span class="doc-icon miss">&#10007;</span>';
+    html+=docNames[i]+'</div>';
+
+    if(stored){
+      // Show uploaded file
+      var ic=fileIconClass(stored.name);
+      html+='<div class="up-file-card">'+
+        '<div class="up-file-icon '+ic+'">'+fileIconLabel(stored.name)+'</div>'+
+        '<div class="up-file-info"><div class="up-file-name">'+stored.name+'</div><div class="up-file-size">'+fmtSize(stored.size)+' &bull; Uploaded '+stored.date+'</div></div>'+
+        '<div class="up-file-acts">'+
+        '<button onclick="viewDoc('+b.id+',\''+k+'\')" title="View"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>'+
+        '<button onclick="downloadDoc('+b.id+',\''+k+'\')" title="Download"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>'+
+        '<button class="del" onclick="removeDoc('+b.id+',\''+k+'\')" title="Remove"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button>'+
+        '</div></div>';
+    } else {
+      // Show dropzone
+      html+='<div class="up-dropzone" id="dz_'+b.id+'_'+k+'" ondragover="dzOver(event,this)" ondragleave="dzLeave(this)" ondrop="dzDrop(event,'+b.id+',\''+k+'\')">'+
+        '<input type="file" accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx,.xlsx,.csv,.txt" onchange="handleFileSelect(event,'+b.id+',\''+k+'\')">'+
+        '<div class="up-dz-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>'+
+        '<div class="up-dz-text">Click or drag file to upload</div>'+
+        '<div class="up-dz-hint">PDF, Images, Word, Excel (max 10MB)</div>'+
+        '</div>';
+    }
+    html+='</div>';
+  });
+
+  document.getElementById('upBody').innerHTML=html;
+  document.getElementById('upModal').style.display='flex';
+}
+function closeUpModal(){document.getElementById('upModal').style.display='none';renderComp()}
+
+function dzOver(e,el){e.preventDefault();e.stopPropagation();el.classList.add('dragover')}
+function dzLeave(el){el.classList.remove('dragover')}
+function dzDrop(e,bid,dk){
+  e.preventDefault();e.stopPropagation();
+  var dz=document.getElementById('dz_'+bid+'_'+dk);
+  if(dz)dz.classList.remove('dragover');
+  var files=e.dataTransfer.files;
+  if(files.length>0)processFile(files[0],bid,dk);
+}
+function handleFileSelect(e,bid,dk){
+  var files=e.target.files;
+  if(files.length>0)processFile(files[0],bid,dk);
+}
+function processFile(file,bid,dk){
+  if(file.size>10*1024*1024){alert('File too large. Maximum size is 10MB.');return}
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var key=docStoreKey(bid,dk);
+    docStore[key]={name:file.name,size:file.size,type:file.type,date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),data:e.target.result};
+    // Mark doc as available
+    var b=B.find(function(x){return x.id===bid});
+    if(b)b.docs[dk]=1;
+    saveDocStore();
+    openUpModal(bid); // re-render
+  };
+  reader.readAsDataURL(file);
+}
+function viewDoc(bid,dk){
+  var key=docStoreKey(bid,dk);
+  var stored=docStore[key];
+  if(!stored||!stored.data)return;
+  // Open in new tab/window
+  if(stored.type&&stored.type.indexOf('pdf')>=0){
+    var win=window.open('');
+    win.document.write('<html><head><title>'+stored.name+'</title></head><body style="margin:0"><embed src="'+stored.data+'" type="application/pdf" width="100%" height="100%" style="position:absolute;inset:0"></body></html>');
+  } else if(stored.type&&stored.type.indexOf('image')>=0){
+    var win=window.open('');
+    win.document.write('<html><head><title>'+stored.name+'</title></head><body style="margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#111"><img src="'+stored.data+'" style="max-width:100%;max-height:100vh"></body></html>');
+  } else {
+    // For other files, trigger download
+    downloadDoc(bid,dk);
+  }
+}
+function downloadDoc(bid,dk){
+  var key=docStoreKey(bid,dk);
+  var stored=docStore[key];
+  if(!stored||!stored.data)return;
+  var a=document.createElement('a');
+  a.href=stored.data;
+  a.download=stored.name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+function removeDoc(bid,dk){
+  if(!confirm('Remove this document?'))return;
+  var key=docStoreKey(bid,dk);
+  delete docStore[key];
+  var b=B.find(function(x){return x.id===bid});
+  if(b)b.docs[dk]=0;
+  saveDocStore();
+  openUpModal(bid); // re-render
+}
+
+function markDoc(id,k){openUpModal(id)}
+
 function sendReminder(g){
   var missing=[];
   var b=B.find(function(x){return x.g===g&&!x.own});
@@ -725,6 +909,7 @@ function saveB(e){
 }
 
 // ── INIT ──
+loadDocStore();
 var rt;window.addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(function(){var pg=document.querySelector('.page.active');if(pg&&pg.id==='page-calendar')renderCal()},200)});
 renderDash();
 </script>
