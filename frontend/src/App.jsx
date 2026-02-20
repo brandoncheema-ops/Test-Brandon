@@ -7,10 +7,10 @@ import AppLayout from './components/Layout/AppLayout';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
-import BookingsPage from './pages/BookingsPage';
-import PropertiesPage from './pages/PropertiesPage';
-import CalendarPage from './pages/CalendarPage';
-import InvoicesPage from './pages/InvoicesPage';
+import EntitiesPage from './pages/EntitiesPage';
+import EntityDetailPage from './pages/EntityDetailPage';
+import { InstitutionsList, InstitutionDetail } from './pages/InstitutionsPage';
+import AccountsPage from './pages/AccountsPage';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -31,10 +31,11 @@ function AppRoutes() {
       <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
       <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route index element={<DashboardPage />} />
-        <Route path="bookings" element={<BookingsPage />} />
-        <Route path="properties" element={<PropertiesPage />} />
-        <Route path="calendar" element={<CalendarPage />} />
-        <Route path="invoices" element={<InvoicesPage />} />
+        <Route path="entities" element={<EntitiesPage />} />
+        <Route path="entities/:id" element={<EntityDetailPage />} />
+        <Route path="institutions" element={<InstitutionsList />} />
+        <Route path="institutions/:id" element={<InstitutionDetail />} />
+        <Route path="accounts" element={<AccountsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>

@@ -1,23 +1,21 @@
 import React, { useState } from 'react';
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { Outlet, NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
-  FiHome, FiCalendar, FiFileText, FiGrid,
-  FiLogOut, FiMenu, FiX, FiMapPin
+  FiHome, FiBriefcase, FiGlobe, FiList,
+  FiLogOut, FiMenu, FiX, FiDollarSign
 } from 'react-icons/fi';
 
 const navItems = [
   { path: '/', icon: FiHome, label: 'Dashboard' },
-  { path: '/bookings', icon: FiFileText, label: 'Bookings' },
-  { path: '/properties', icon: FiMapPin, label: 'Properties' },
-  { path: '/calendar', icon: FiCalendar, label: 'Calendar' },
-  { path: '/invoices', icon: FiGrid, label: 'Invoices' },
+  { path: '/entities', icon: FiBriefcase, label: 'Entities' },
+  { path: '/institutions', icon: FiGlobe, label: 'Institutions' },
+  { path: '/accounts', icon: FiList, label: 'Accounts' },
 ];
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const location = useLocation();
 
   return (
     <div className="app-layout">
@@ -25,10 +23,10 @@ export default function AppLayout() {
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
           <div className="sidebar-logo">
-            <span style={{ fontSize: '24px' }}>&#9889;</span>
+            <FiDollarSign size={22} />
             NF6
           </div>
-          <div className="sidebar-subtitle">Property Management</div>
+          <div className="sidebar-subtitle">Family Office Dashboard</div>
           <button
             className="modal-close"
             style={{ position: 'absolute', top: 16, right: 16, display: sidebarOpen ? 'block' : 'none' }}
@@ -39,7 +37,7 @@ export default function AppLayout() {
         </div>
 
         <nav className="sidebar-nav">
-          <div className="nav-section-label">Main</div>
+          <div className="nav-section-label">Overview</div>
           {navItems.map(item => (
             <NavLink
               key={item.path}
@@ -88,7 +86,7 @@ export default function AppLayout() {
             </button>
           </div>
           <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-            {user?.name} | NF6 Family Office
+            {user?.name} | MN Family Office
           </div>
         </div>
         <Outlet />

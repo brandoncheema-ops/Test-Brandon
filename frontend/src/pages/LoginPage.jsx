@@ -42,7 +42,7 @@ export default function LoginPage() {
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{ fontSize: 36, marginBottom: 8 }}>&#9889;</div>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: '#1a5f4a' }}>NF6 Family Office</h1>
-          <p style={{ color: '#999', fontSize: 14, marginTop: 4 }}>Property Management Portal</p>
+          <p style={{ color: '#999', fontSize: 14, marginTop: 4 }}>Family Office Dashboard</p>
         </div>
 
         <form onSubmit={handleSubmit}>

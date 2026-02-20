@@ -43,7 +43,7 @@ export default function RegisterPage() {
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{ fontSize: 36, marginBottom: 8 }}>&#9889;</div>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: '#1a5f4a' }}>Create Account</h1>
-          <p style={{ color: '#999', fontSize: 14, marginTop: 4 }}>NF6 Property Management</p>
+          <p style={{ color: '#999', fontSize: 14, marginTop: 4 }}>NF6 Family Office Dashboard</p>
         </div>
 
         <form onSubmit={handleSubmit}>
