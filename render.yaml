@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: nf6-dashboard
+    runtime: static
+    buildCommand: mkdir -p dist && cp nf6-dashboard.html dist/index.html
+    staticPublishPath: ./dist
+    envVars: []
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=3600
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
