@@ -36,7 +36,7 @@ a{color:inherit;text-decoration:none}
 .main{margin-left:250px;flex:1;min-height:100vh}
 
 /* Topbar */
-.topbar{background:var(--card);padding:14px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;gap:12px;flex-wrap:wrap}
+.topbar{background:var(--card);padding:14px 28px;border-bottom:none;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;gap:12px;flex-wrap:wrap}
 .topbar-left{display:flex;align-items:center;gap:12px}
 .topbar-right{display:flex;align-items:center;gap:10px}
 .yr-filter{display:flex;background:var(--bg);border-radius:8px;overflow:hidden;border:1px solid var(--border)}
@@ -47,6 +47,13 @@ a{color:inherit;text-decoration:none}
 .theme-bar{display:flex;gap:6px;align-items:center}
 .theme-dot{width:20px;height:20px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:all .2s}
 .theme-dot:hover,.theme-dot.active{border-color:var(--text);transform:scale(1.15)}
+/* Mobile toolbar - always visible strip under topbar on mobile */
+.mob-toolbar{display:none;background:var(--card);border-bottom:1px solid var(--border);padding:10px 16px;position:sticky;top:48px;z-index:49;gap:8px;align-items:center;justify-content:space-between}
+.mob-toolbar .yr-filter{flex:1;justify-content:center}
+.mob-toolbar .yr-btn{padding:7px 16px;font-size:13px;flex:1;text-align:center}
+.mob-toolbar .theme-bar{gap:5px}
+.mob-toolbar .theme-dot{width:22px;height:22px}
+.mob-toolbar .dm-toggle{width:38px;height:38px;font-size:18px}
 
 /* Page */
 .page{padding:24px 28px;display:none}
@@ -228,7 +235,9 @@ tr:hover{background:var(--hover)}
 @media(max-width:768px){
   .sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}
   .main{margin-left:0;padding-bottom:70px}
-  .topbar{padding:12px 16px}
+  .topbar{padding:10px 16px;border-bottom:none}
+  .topbar-right{display:none}
+  .mob-toolbar{display:flex}
   .page{padding:16px}
   .kpi-grid{grid-template-columns:1fr 1fr;gap:10px}
   .kpi{padding:14px}.kpi-val{font-size:20px}
@@ -239,10 +248,16 @@ tr:hover{background:var(--hover)}
   .cal-cell .dn{font-size:11px}.cal-bk{font-size:8px;padding:1px 3px}
   .cal-dh{padding:6px 2px;font-size:9px}
   .modal{width:100%;max-width:100%;height:100vh;max-height:100vh;border-radius:0}
-  .btn{min-height:44px;padding:10px 16px}.btn-sm{min-height:36px}
+  .modal-ov{align-items:flex-end}
+  .btn{min-height:44px;padding:10px 16px}.btn-sm{min-height:36px;padding:8px 12px}
   .inv-kpis{grid-template-columns:1fr 1fr 1fr;gap:8px}
   .inv-kpis .kpi{padding:12px 8px}.inv-kpis .kpi-val{font-size:16px}
-  .theme-bar{display:none}
+  .comp-guest{flex-wrap:wrap;gap:10px}
+  .comp-name{font-size:15px}
+  .doc-row{flex-wrap:wrap;gap:6px;padding:12px 0}
+  .doc-name{font-size:12px}
+  .up-dropzone{padding:20px 14px}
+  .up-file-card{flex-wrap:wrap}
 }
 @media(max-width:480px){
   .kpi{padding:12px 10px}.kpi-val{font-size:18px}.kpi-label{font-size:9px}
@@ -252,7 +267,11 @@ tr:hover{background:var(--hover)}
   .cal-cell{min-height:44px;padding:2px}.cal-cell .dn{font-size:10px}
   .cal-bk{font-size:7px;padding:1px 2px}.cal-dh{font-size:8px;padding:4px 1px}
   .bar-chart{height:100px}.donut-svg{width:100px;height:100px}
-  .yr-filter{display:none}.topbar-yr-mobile{display:flex!important}
+  .mob-toolbar .yr-btn{padding:7px 10px;font-size:12px}
+  .mob-toolbar .theme-dot{width:18px;height:18px}
+  .comp-card{padding:14px}
+  .filter-pills{gap:6px}
+  .pill{padding:5px 12px;font-size:11px}
 }
 @supports(padding-bottom:env(safe-area-inset-bottom)){
   .bottom-nav{padding-bottom:env(safe-area-inset-bottom)}
@@ -296,6 +315,21 @@ tr:hover{background:var(--hover)}
     </div>
     <button class="dm-toggle" onclick="toggleDark()" title="Toggle dark mode">&#9789;</button>
   </div>
+</div>
+<!-- Mobile Toolbar - year filter, themes, dark mode always accessible on phones -->
+<div class="mob-toolbar" id="mobToolbar">
+  <div class="yr-filter">
+    <button class="yr-btn active" onclick="setYear('all',this)">All</button>
+    <button class="yr-btn" onclick="setYear(2025,this)">2025</button>
+    <button class="yr-btn" onclick="setYear(2026,this)">2026</button>
+  </div>
+  <div class="theme-bar">
+    <span class="theme-dot active" style="background:#1a5f4a" onclick="setTheme('#1a5f4a','#0d3a2a','#2d7a5e',this)" title="Emerald"></span>
+    <span class="theme-dot" style="background:#2563eb" onclick="setTheme('#2563eb','#1d4ed8','#3b82f6',this)" title="Ocean"></span>
+    <span class="theme-dot" style="background:#e0565b" onclick="setTheme('#e0565b','#c62828','#ef5350',this)" title="Coral"></span>
+    <span class="theme-dot" style="background:#7c3aed" onclick="setTheme('#7c3aed','#5b21b6','#8b5cf6',this)" title="Plum"></span>
+  </div>
+  <button class="dm-toggle" onclick="toggleDark()" title="Toggle dark mode">&#9789;</button>
 </div>
 
 <!-- DASHBOARD -->
@@ -506,8 +540,12 @@ function go(name){
 // ── YEAR FILTER ──
 function setYear(y,el){
   curYear=y;
+  // Sync all year buttons (desktop topbar + mobile toolbar)
   document.querySelectorAll('.yr-btn').forEach(function(b){b.classList.remove('active')});
-  if(el)el.classList.add('active');
+  document.querySelectorAll('.yr-btn').forEach(function(b){
+    var label=b.textContent.trim();
+    if((y==='all'&&label==='All')||(y==2025&&label==='2025')||(y==2026&&label==='2026'))b.classList.add('active');
+  });
   var pg=document.querySelector('.page.active');
   if(pg)go(pg.id.replace('page-',''));
 }
@@ -517,13 +555,17 @@ function setTheme(p,pd,pl,el){
   document.documentElement.style.setProperty('--pri',p);
   document.documentElement.style.setProperty('--pri-d',pd);
   document.documentElement.style.setProperty('--pri-l',pl);
+  // Sync all theme dots (desktop + mobile)
   document.querySelectorAll('.theme-dot').forEach(function(d){d.classList.remove('active')});
-  if(el)el.classList.add('active');
+  document.querySelectorAll('.theme-dot').forEach(function(d){
+    if(d.style.background===p||d.style.backgroundColor===p)d.classList.add('active');
+  });
 }
 function toggleDark(){
   var d=document.documentElement.getAttribute('data-theme')==='dark';
   document.documentElement.setAttribute('data-theme',d?'':'dark');
-  document.querySelector('.dm-toggle').innerHTML=d?'&#9789;':'&#9788;';
+  // Sync all dark mode toggles
+  document.querySelectorAll('.dm-toggle').forEach(function(btn){btn.innerHTML=d?'&#9789;':'&#9788;'});
 }
 
 // ── DASHBOARD ──
