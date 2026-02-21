@@ -3,17 +3,23 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const path = require('path');
+const fs = require('fs');
 const store = require('./store');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true
 }));
+
+// Serve React build in production
+const clientBuildPath = path.join(__dirname, '..', 'frontend', 'build');
+app.use(express.static(clientBuildPath));
 
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200 });
 app.use('/api/', limiter);
@@ -243,6 +249,16 @@ app.put('/api/invoices/:id', protect, authorize('owner', 'manager'), (req, res) 
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', mode: 'in-memory', timestamp: new Date().toISOString() });
+});
+
+// Serve React app for non-API routes
+app.get('*', (req, res) => {
+  const indexPath = path.join(clientBuildPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(200).send('API is running. Build the React client to serve the frontend.');
+  }
 });
 
 // Error handler

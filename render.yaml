@@ -1,0 +1,41 @@
+services:
+  # ============================================
+  # NF6 Financial Dashboard (Plaid Integration)
+  # ============================================
+  - type: web
+    name: nf6-financial-dashboard
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: plaid-dashboard
+    buildCommand: cd client && npm install && npm run build && cd ../server && npm install
+    startCommand: cd server && node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PLAID_CLIENT_ID
+        sync: false  # Set manually in Render dashboard
+      - key: PLAID_SECRET
+        sync: false
+      - key: PLAID_ENV
+        value: sandbox
+      - key: GOOGLE_SERVICE_ACCOUNT_JSON
+        sync: false
+
+  # ============================================
+  # NF6 Property Management Dashboard
+  # ============================================
+  - type: web
+    name: nf6-property-management
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: cd frontend && npm install && npm run build && cd ../backend && npm install
+    startCommand: cd backend && node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PORT
+        value: 5000
