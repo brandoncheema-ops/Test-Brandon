@@ -133,14 +133,7 @@ function getSession(req) {
     return null;
   }
 
-  // IP binding enforcement (session hijacking protection)
-  const clientIp = req.ip || req.connection.remoteAddress;
-  if (session.ip && session.ip !== clientIp) {
-    console.log(`[SECURITY] Session IP mismatch: expected ${session.ip}, got ${clientIp}`);
-    sessions.delete(sessionId);
-    return null;
-  }
-
+      // NOTE: IP binding disabled - Render/Cloudflare rotates proxy IPs between requests
   // User-Agent binding (additional fingerprint check)
   const ua = req.get('User-Agent') || '';
   if (session.ua && session.ua !== ua) {
@@ -185,7 +178,6 @@ function createSession(user, req) {
 
   sessions.set(sessionId, {
     user,
-    ip: req.ip || req.connection.remoteAddress,
     ua: req.get('User-Agent') || '',
     createdAt: Date.now(),
     expiresAt
