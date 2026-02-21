@@ -11,7 +11,3 @@ services:
         generateValue: true
       - key: FRONTEND_URL
         value: https://nf6-property-management.onrender.com
-    headers:
-      - path: /*
-        name: Cache-Control
-        value: public, max-age=3600
