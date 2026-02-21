@@ -9,7 +9,7 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --tiller-green:#0D8043;--tiller-green-light:#E6F4A;--tiller-green-dark:#0A6B37;
+  --tiller-green:#0D8043;--tiller-green-light:#E6F4EA;--tiller-green-dark:#0A6B37;
   --tiller-blue:#1A73E8;--tiller-red:#D93025;--tiller-orange:#F29900;
   --tiller-bg:#F8F9FA;--tiller-white:#FFFFFF;--tiller-border:#DADCE0;
   --tiller-text:#202124;--tiller-text2:#5F6368;--tiller-text3:#80868B;
@@ -172,7 +172,7 @@ select.filter-select{padding:8px 12px;border:1px solid var(--tiller-border);bord
 <!-- ===== DASHBOARD ===== -->
 <div class="container">
 <div class="page active" id="pg-dashboard">
-  <div class="page-header"><h1>Financial Overview</h1><p>Consolidated view across 20 entities, 9 institutions, 42 accounts &middot; Updated Feb 19, 2026</p></div>
+  <div class="page-header"><h1>Financial Overview</h1><p>Consolidated view across 21 entities, 11 institutions, 46 accounts &middot; Updated Feb 20, 2026</p></div>
   <div class="kpi-strip" id="dKpis"></div>
   <div class="grid-2">
     <div class="card"><div class="card-header"><h3>Assets by Institution</h3></div><div class="card-body"><div class="chart-box"><canvas id="cInst"></canvas></div></div></div>
@@ -204,14 +204,14 @@ select.filter-select{padding:8px 12px;border:1px solid var(--tiller-border);bord
 
 <!-- ===== ENTITIES ===== -->
 <div class="page" id="pg-entities">
-  <div class="page-header"><h1>Entities</h1><p>20 legal entities across multiple jurisdictions</p></div>
+  <div class="page-header"><h1>Entities</h1><p>21 legal entities across multiple jurisdictions</p></div>
   <input class="search-input" id="eSearch" placeholder="Search entities..." oninput="renderEntities()" style="margin-bottom:16px">
   <div class="entity-grid" id="eGrid"></div>
 </div>
 
 <!-- ===== INSTITUTIONS ===== -->
 <div class="page" id="pg-institutions">
-  <div class="page-header"><h1>Institutions</h1><p>9 financial institutions across 3 countries</p></div>
+  <div class="page-header"><h1>Institutions</h1><p>11 financial institutions across 4 countries</p></div>
   <div id="iGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px"></div>
 </div>
 
@@ -227,7 +227,7 @@ select.filter-select{padding:8px 12px;border:1px solid var(--tiller-border);bord
 
 <!-- ===== INVESTMENTS ===== -->
 <div class="page" id="pg-investments">
-  <div class="page-header"><h1>Investments</h1><p>Charles Schwab &amp; J.P. Morgan portfolio</p></div>
+  <div class="page-header"><h1>Investments</h1><p>Charles Schwab, Fidelity &amp; BTG portfolio</p></div>
   <div class="kpi-strip" id="vKpis"></div>
   <div class="card"><div class="card-header"><h3>Portfolio</h3></div><div class="card-body" style="padding:0"><table><thead><tr><th>Account</th><th>Institution</th><th>Type</th><th class="text-right">Balance</th><th class="text-right">Day Change</th></tr></thead><tbody id="vTbl"></tbody></table></div></div>
   <div class="card" style="margin-top:16px"><div class="card-header"><h3>Distribution</h3></div><div class="card-body"><div class="chart-box"><canvas id="cInv"></canvas></div></div></div>
@@ -273,7 +273,7 @@ select.filter-select{padding:8px 12px;border:1px solid var(--tiller-border);bord
 // =================================
 // DATA
 // =================================
-const FX={USD:1,EUR:1.08,COP:0.0002712};
+const FX={USD:1,EUR:1.1786,COP:0.0002706};
 const entities=[
 {id:'e1',name:'Michael Nguyen',type:'Personal',jur:'US-PR'},
 {id:'e2',name:'MN Family Trust',type:'Trust',jur:'US'},
@@ -294,62 +294,80 @@ const entities=[
 {id:'e17',name:'NF6 Spain Holdings SL',type:'SL',jur:'Spain'},
 {id:'e18',name:'NF Europe Holdings 2022 SL',type:'SL',jur:'Spain'},
 {id:'e19',name:'Paris Thacko',type:'Company',jur:'Spain'},
-{id:'e20',name:'MN Dorado Property',type:'Personal',jur:'US-PR'}
+{id:'e20',name:'MN Dorado Property',type:'Personal',jur:'US-PR'},
+{id:'e21',name:'NF MDE CO',type:'LLC',jur:'Colombia'}
 ];
 const insts=[
-{id:'i1',name:'FirstBank Puerto Rico',type:'Bank',country:'US-PR',color:'#1a5276'},
+{id:'i1',name:'Banco Popular',type:'Bank',country:'US-PR',color:'#1a5276'},
 {id:'i2',name:'Bank of America',type:'Bank',country:'US',color:'#c0392b'},
 {id:'i3',name:'Chase',type:'Bank',country:'US',color:'#2c3e50'},
-{id:'i4',name:'J.P. Morgan',type:'Investment Bank',country:'US',color:'#1a3c6e'},
+{id:'i4',name:'Fidelity',type:'Brokerage',country:'US',color:'#4a8c3f'},
 {id:'i5',name:'Charles Schwab',type:'Brokerage',country:'US',color:'#00a0df'},
-{id:'i6',name:'Santander',type:'Bank',country:'Spain',color:'#ec0000'},
-{id:'i7',name:'Bancolombia',type:'Bank',country:'Colombia',color:'#003DA5'},
-{id:'i8',name:'Banco de Occidente',type:'Bank',country:'Colombia',color:'#005ca9'},
-{id:'i9',name:'QuickBooks Online',type:'Accounting',country:'US',color:'#2ca01c'}
+{id:'i6',name:'Banco Santander',type:'Bank',country:'Spain',color:'#ec0000'},
+{id:'i7',name:'Banco Colombia',type:'Bank',country:'Colombia',color:'#003DA5'},
+{id:'i8',name:'Occidente Colombia',type:'Bank',country:'Colombia',color:'#005ca9'},
+{id:'i9',name:'QuickBooks Online',type:'Accounting',country:'US',color:'#2ca01c'},
+{id:'i10',name:'BTG Cayman Islands',type:'Investment Bank',country:'US',color:'#1a3c6e'},
+{id:'i11',name:'Oriental Bank',type:'Bank',country:'US-PR',color:'#e67e22'}
 ];
 const accts=[
-{id:'a1',name:'Michael Nguyen PMA',num:'030126916',eid:'e1',iid:'i1',type:'Checking',cur:'USD',bal:22.27,liab:false},
-{id:'a2',name:'YM PR Investment Group LLC',num:'030138337',eid:'e4',iid:'i1',type:'Checking',cur:'USD',bal:227434.12,liab:false},
-{id:'a3',name:'YM PR Investment Group LLC',num:'030219175',eid:'e4',iid:'i1',type:'Savings',cur:'USD',bal:47960.37,liab:false},
-{id:'a4',name:'MN Family Trust',num:'030228875',eid:'e2',iid:'i1',type:'Checking',cur:'USD',bal:2322.44,liab:false},
+// Banco Popular (i1)
+{id:'a1',name:'Michael Nguyen PMA',num:'030126916',eid:'e1',iid:'i1',type:'Checking',cur:'USD',bal:22,liab:false},
+{id:'a2',name:'YM PR Investment Group LLC #1',num:'030138337',eid:'e4',iid:'i1',type:'Checking',cur:'USD',bal:227434,liab:false},
+{id:'a3',name:'YM PR Investment Group LLC #2',num:'030219175',eid:'e4',iid:'i1',type:'Savings',cur:'USD',bal:47960,liab:false},
+{id:'a4',name:'MN Family Trust',num:'030228875',eid:'e2',iid:'i1',type:'Checking',cur:'USD',bal:2322,liab:false},
 {id:'a5',name:'2019 MN Family Revocable Trust',num:'030267013',eid:'e3',iid:'i1',type:'Checking',cur:'USD',bal:50000,liab:false},
-{id:'a6',name:'Michael Nguyen PH',num:'030290252',eid:'e1',iid:'i1',type:'Checking',cur:'USD',bal:1.59,liab:false},
-{id:'a7',name:'BoFA Personal Banking',num:'****8651',eid:'e1',iid:'i2',type:'Checking',cur:'USD',bal:5010.86,liab:false},
-{id:'a8',name:'MN Personal Checking',num:'****0451',eid:'e1',iid:'i3',type:'Checking',cur:'USD',bal:5000,liab:false},
-{id:'a9',name:'MN - Dorado PH',num:'****6179',eid:'e20',iid:'i3',type:'Checking',cur:'USD',bal:22347.06,liab:false},
-{id:'a10',name:'MN Personal Savings',num:'****0451',eid:'e1',iid:'i3',type:'Savings',cur:'USD',bal:4199.73,liab:false},
-{id:'a11',name:'Mortgage Loan',num:'****3064',eid:'e20',iid:'i3',type:'Mortgage',cur:'USD',bal:2494214.24,liab:true},
-{id:'a12',name:'NF6 Tiger Capital LLC',num:'****2502',eid:'e12',iid:'i4',type:'Investment',cur:'USD',bal:10,liab:false},
-{id:'a13',name:'NF6 Tiger Capital LLC',num:'****4974',eid:'e12',iid:'i4',type:'Investment',cur:'USD',bal:0,liab:false},
-{id:'a14',name:'NF6 Capital',num:'Z25411126',eid:'e15',iid:'i5',type:'Brokerage',cur:'USD',bal:1565.04,liab:false,dc:-4.42,dp:-0.28},
-{id:'a15',name:'MN Personal',num:'Z27319007',eid:'e1',iid:'i5',type:'Brokerage',cur:'USD',bal:1809397.56,liab:false,dc:21326.35,dp:1.19},
-{id:'a16',name:'TLMND',num:'Z27516454',eid:'e13',iid:'i5',type:'Brokerage',cur:'USD',bal:179907.47,liab:false,dc:0.64,dp:0.00},
-{id:'a17',name:'NF6 Tiger Capital VOO',num:'Z29628205',eid:'e12',iid:'i5',type:'Brokerage',cur:'USD',bal:2130.42,liab:false,dc:-0.67,dp:-0.03},
-{id:'a18',name:'NF6 Tiger Capital Dividends',num:'Z40362104',eid:'e12',iid:'i5',type:'Brokerage',cur:'USD',bal:3580.71,liab:false,dc:-8.66,dp:-0.24},
-{id:'a19',name:'MN Personal Investment',num:'****748',eid:'e1',iid:'i5',type:'Investment',cur:'USD',bal:10996.90,liab:false},
-{id:'a20',name:'NF6 Family Holding',num:'****316',eid:'e14',iid:'i5',type:'Brokerage',cur:'USD',bal:324.79,liab:false},
-{id:'a21',name:'NF6 Tiger Capital',num:'****259',eid:'e12',iid:'i5',type:'Brokerage',cur:'USD',bal:1378.59,liab:false,dc:-2.56,dp:-0.19},
-{id:'a22',name:'2019 MN Family Trust',num:'****196',eid:'e3',iid:'i5',type:'Trust',cur:'USD',bal:0,liab:false},
-{id:'a23',name:'MN Family Trust',num:'****805',eid:'e2',iid:'i5',type:'Trust',cur:'USD',bal:0,liab:false},
-{id:'a24',name:'NF6 Spain Holdings SL',num:'ES09****8120',eid:'e17',iid:'i6',type:'Checking',cur:'EUR',bal:1248.48,liab:false},
-{id:'a25',name:'NF Europe Holdings 2022 SL',num:'ES44****8138',eid:'e18',iid:'i6',type:'Checking',cur:'EUR',bal:5730.70,liab:false},
-{id:'a26',name:'Paris Thacko',num:'ES66****0523',eid:'e19',iid:'i6',type:'Checking',cur:'EUR',bal:2731.81,liab:false},
-{id:'a27',name:'NF Europe Holdings 2022 SL USD',num:'ES49****1830',eid:'e18',iid:'i6',type:'Checking',cur:'USD',bal:2.07,liab:false},
-{id:'a28',name:'Bancolombia Savings',num:'029-000177-34',eid:'e1',iid:'i7',type:'Savings',cur:'COP',bal:49449012.26,liab:false},
-{id:'a29',name:'Bancolombia Additional',num:'029-****-XX',eid:'e1',iid:'i7',type:'Savings',cur:'COP',bal:150000000,liab:false},
-{id:'a30',name:'Occidente Holdings',num:'OCC-****',eid:'e1',iid:'i8',type:'Savings',cur:'COP',bal:127420185.74,liab:false},
-{id:'a31',name:'MBJ DR INC Operating',num:'QBO-MBJ',eid:'e5',iid:'i9',type:'Operating',cur:'USD',bal:9775,liab:false},
-{id:'a32',name:'NF USA CA LLC Operating',num:'QBO-NFCA',eid:'e6',iid:'i9',type:'Operating',cur:'USD',bal:200,liab:false},
-{id:'a33',name:'NF USA TX LLC Operating',num:'QBO-NFTX',eid:'e7',iid:'i9',type:'Operating',cur:'USD',bal:30535.86,liab:false},
-{id:'a34',name:'NF6 Ventures LLC Operating',num:'QBO-VENT',eid:'e8',iid:'i9',type:'Operating',cur:'USD',bal:301.64,liab:false},
-{id:'a35',name:'Blue Panda FLP Operating',num:'QBO-BPFLP',eid:'e9',iid:'i9',type:'Operating',cur:'USD',bal:1715,liab:false},
-{id:'a36',name:'NGM Woodland Park Operating',num:'QBO-NGM',eid:'e10',iid:'i9',type:'Operating',cur:'USD',bal:2550.55,liab:false},
-{id:'a37',name:'NF6 Joint MGMT Operating',num:'QBO-JMGMT',eid:'e11',iid:'i9',type:'Operating',cur:'USD',bal:75458.85,liab:false},
-{id:'a38',name:'NF6 Tiger Capital Operating',num:'QBO-TIGER',eid:'e12',iid:'i9',type:'Operating',cur:'USD',bal:1448,liab:false},
-{id:'a39',name:'TLMND LLC Operating',num:'QBO-TLMND',eid:'e13',iid:'i9',type:'Operating',cur:'USD',bal:67112.40,liab:false},
-{id:'a40',name:'NF6 Family Holding LP Operating',num:'QBO-NFHOLD',eid:'e14',iid:'i9',type:'Operating',cur:'USD',bal:1013,liab:false},
-{id:'a41',name:'NF6 Capital LLC Operating',num:'QBO-NFCAP',eid:'e15',iid:'i9',type:'Operating',cur:'USD',bal:1715,liab:false},
-{id:'a42',name:'BPMGMT LLC Operating',num:'QBO-BPMGMT',eid:'e16',iid:'i9',type:'Operating',cur:'USD',bal:2641.33,liab:false}
+{id:'a6',name:'Michael Nguyen PH',num:'030290252',eid:'e1',iid:'i1',type:'Checking',cur:'USD',bal:2,liab:false},
+// Bank of America (i2)
+{id:'a7',name:'Mike\'s personal BOA account',num:'****8651',eid:'e1',iid:'i2',type:'Checking',cur:'USD',bal:5011,liab:false},
+// Chase (i3)
+{id:'a8',name:'Mike\'s personal Chase account',num:'****0451',eid:'e1',iid:'i3',type:'Checking',cur:'USD',bal:12647283,liab:false},
+// Fidelity (i4)
+{id:'a9',name:'Michael Nguyen (CASH)',num:'FIDELITY-CASH',eid:'e1',iid:'i4',type:'Brokerage',cur:'USD',bal:1792279,liab:false},
+{id:'a10',name:'NF6 Capital LLC',num:'x126',eid:'e15',iid:'i4',type:'Brokerage',cur:'USD',bal:1560,liab:false},
+{id:'a11',name:'NF6 Tiger Capital LLC (Dividends)',num:'x104',eid:'e12',iid:'i4',type:'Brokerage',cur:'USD',bal:3580,liab:false},
+{id:'a12',name:'NF6 Tiger Capital LLC (VOO)',num:'x205',eid:'e12',iid:'i4',type:'Brokerage',cur:'USD',bal:2130,liab:false},
+{id:'a13',name:'TLMND LLC',num:'x454',eid:'e13',iid:'i4',type:'Brokerage',cur:'USD',bal:179902,liab:false},
+// Charles Schwab (i5)
+{id:'a14',name:'Charles Schwab Investment (MN Personal)',num:'Z27319007',eid:'e1',iid:'i5',type:'Investment',cur:'USD',bal:10997,liab:false},
+{id:'a15',name:'Charles Schwab Investment (NF6 Family Holding)',num:'****316',eid:'e14',iid:'i5',type:'Investment',cur:'USD',bal:325,liab:false},
+{id:'a16',name:'Charles Schwab Investment (NF6 Tiger Capital)',num:'****259',eid:'e12',iid:'i5',type:'Investment',cur:'USD',bal:1380,liab:false},
+{id:'a17',name:'Charles Schwab Trust (2019 MN Family Trust)',num:'****196',eid:'e3',iid:'i5',type:'Trust',cur:'USD',bal:0,liab:false},
+{id:'a18',name:'Charles Schwab Trust (MN Family Trust)',num:'****805',eid:'e2',iid:'i5',type:'Trust',cur:'USD',bal:0,liab:false},
+// Banco Santander (i6)
+{id:'a19',name:'NF6 Spain Holdings SL',num:'ES09****8120',eid:'e17',iid:'i6',type:'Checking',cur:'EUR',bal:1248,liab:false},
+{id:'a20',name:'NF Europe Holdings 2022 SL',num:'ES44****8138',eid:'e18',iid:'i6',type:'Checking',cur:'EUR',bal:5731,liab:false},
+{id:'a21',name:'Paris Thacko',num:'ES66****0523',eid:'e19',iid:'i6',type:'Checking',cur:'EUR',bal:2732,liab:false},
+{id:'a22',name:'NF Europe Holdings 2022 SL USD',num:'ES49****1830',eid:'e18',iid:'i6',type:'Checking',cur:'USD',bal:2,liab:false},
+{id:'a23',name:'NF6 Spain - Plaza Cebada',num:'ES-PLAZA',eid:'e17',iid:'i6',type:'Checking',cur:'EUR',bal:0,liab:false},
+{id:'a24',name:'NF6 Spain - Santa Ana',num:'ES-SANTA',eid:'e17',iid:'i6',type:'Checking',cur:'EUR',bal:0,liab:false},
+// Banco Colombia (i7)
+{id:'a25',name:'NF MDE CO Banco Colombia',num:'029-000177-34',eid:'e21',iid:'i7',type:'Savings',cur:'COP',bal:47476217,liab:false},
+// Occidente Colombia (i8)
+{id:'a26',name:'NF MDE CO Occidente',num:'OCC-****',eid:'e21',iid:'i8',type:'Savings',cur:'COP',bal:277493116,liab:false},
+// BTG Cayman Islands (i10)
+{id:'a27',name:'BTG NF MDE CO',num:'BTG-CO',eid:'e21',iid:'i10',type:'Savings',cur:'COP',bal:3086246,liab:false},
+{id:'a28',name:'NF6 Tiger Capital Cash Accounts',num:'BTG-CASH',eid:'e12',iid:'i10',type:'Checking',cur:'USD',bal:22308,liab:false},
+{id:'a29',name:'NF6 Tiger Capital Fixed Income',num:'BTG-FI',eid:'e12',iid:'i10',type:'Investment',cur:'USD',bal:2320292,liab:false},
+{id:'a30',name:'NF6 Tiger Time Deposit',num:'BTG-TD',eid:'e12',iid:'i10',type:'Savings',cur:'USD',bal:2385652,liab:false},
+// Oriental Bank (i11)
+{id:'a31',name:'Michael Nguyen - Checking',num:'ORIENTAL-CHK',eid:'e1',iid:'i11',type:'Checking',cur:'USD',bal:7500,liab:false},
+{id:'a32',name:'Michael Nguyen - Savings',num:'ORIENTAL-SAV',eid:'e1',iid:'i11',type:'Savings',cur:'USD',bal:4200,liab:false},
+{id:'a33',name:'Michael Nguyen Dorado PH',num:'****6179',eid:'e20',iid:'i11',type:'Checking',cur:'USD',bal:22347,liab:false},
+{id:'a34',name:'Mortgage Loan',num:'****3064',eid:'e20',iid:'i11',type:'Mortgage',cur:'USD',bal:2494214,liab:true},
+// QBO / Chase Operating Accounts (i9)
+{id:'a35',name:'MBJ DR INC Operating',num:'QBO-MBJ',eid:'e5',iid:'i9',type:'Operating',cur:'USD',bal:9775,liab:false},
+{id:'a36',name:'NF USA CA LLC Operating',num:'QBO-NFCA',eid:'e6',iid:'i9',type:'Operating',cur:'USD',bal:200,liab:false},
+{id:'a37',name:'NF USA TX LLC Operating',num:'QBO-NFTX',eid:'e7',iid:'i9',type:'Operating',cur:'USD',bal:30536,liab:false},
+{id:'a38',name:'NF6 Ventures LLC Operating',num:'QBO-VENT',eid:'e8',iid:'i9',type:'Operating',cur:'USD',bal:302,liab:false},
+{id:'a39',name:'Blue Panda FLP Operating',num:'QBO-BPFLP',eid:'e9',iid:'i9',type:'Operating',cur:'USD',bal:1715,liab:false},
+{id:'a40',name:'NGM Woodland Park Operating',num:'QBO-NGM',eid:'e10',iid:'i9',type:'Operating',cur:'USD',bal:2551,liab:false},
+{id:'a41',name:'NF6 Joint MGMT Operating',num:'QBO-JMGMT',eid:'e11',iid:'i9',type:'Operating',cur:'USD',bal:75459,liab:false},
+{id:'a42',name:'NF6 Tiger Capital Operating',num:'QBO-TIGER',eid:'e12',iid:'i9',type:'Operating',cur:'USD',bal:1448,liab:false},
+{id:'a43',name:'TLMND LLC Operating',num:'QBO-TLMND',eid:'e13',iid:'i9',type:'Operating',cur:'USD',bal:67112,liab:false},
+{id:'a44',name:'NF6 Family Holding LP Operating',num:'QBO-NFHOLD',eid:'e14',iid:'i9',type:'Operating',cur:'USD',bal:1013,liab:false},
+{id:'a45',name:'NF6 Capital LLC Operating',num:'QBO-NFCAP',eid:'e15',iid:'i9',type:'Operating',cur:'USD',bal:1715,liab:false},
+{id:'a46',name:'BPMGMT LLC Operating',num:'QBO-BPMGMT',eid:'e16',iid:'i9',type:'Operating',cur:'USD',bal:2641,liab:false}
 ];
 
 // =================================
@@ -403,7 +421,7 @@ function renderDash(){
     <div class="kpi-card"><div class="label">Total Liabilities</div><div class="value red">${$s(tL)}</div><div class="sub">${accts.filter(a=>a.liab).length} accounts</div></div>
     <div class="kpi-card"><div class="label">Day Change</div><div class="value ${dc>=0?'green':'red'}">${dc>=0?'+':''}${$s(Math.abs(dc))}</div><div class="sub">Schwab brokerage</div></div>
     <div class="kpi-card"><div class="label">Entities</div><div class="value">${entities.length}</div><div class="sub">Legal structures</div></div>
-    <div class="kpi-card"><div class="label">Institutions</div><div class="value">${insts.length}</div><div class="sub">3 countries</div></div>`;
+    <div class="kpi-card"><div class="label">Institutions</div><div class="value">${insts.length}</div><div class="sub">4 countries</div></div>`;
 
   // Institution doughnut
   const it={};accts.filter(a=>!a.liab).forEach(a=>{const i=inst(a.iid);it[i.name]=(it[i.name]||0)+usd(a.bal,a.cur)});
@@ -506,7 +524,7 @@ function renderQBO(){
 // INVESTMENTS
 // =================================
 function renderInv(){
-  const ia=accts.filter(a=>(a.iid==='i5'||a.iid==='i4')&&!a.liab);
+  const ia=accts.filter(a=>(a.iid==='i5'||a.iid==='i4'||a.iid==='i10')&&!a.liab);
   const tot=ia.reduce((s,a)=>s+a.bal,0);
   const dt=ia.reduce((s,a)=>s+(a.dc||0),0);
   document.getElementById('vKpis').innerHTML=`
