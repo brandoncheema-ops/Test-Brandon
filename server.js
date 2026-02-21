@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3000;
 // ============================================================
 // SECURITY CONFIG
 // ============================================================
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_ID = process.env.GOOGLCLIENT_ID;
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(64).toString('hex');
 const ALLOWED_DOMAINS = (process.env.ALLOWED_DOMAINS || 'nf6capital.com').split(',').map(d => d.trim().toLowerCase());
 const SESSION_EXPIRY_HOURS = parseInt(process.env.SESSION_EXPIRY_HOURS) || 8;
@@ -53,7 +53,8 @@ app.use(helmet({
       frameSrc: ["https://accounts.google.com", "https://cdn.plaid.com"],
       connectSrc: ["'self'", "https://accounts.google.com"],
       imgSrc: ["'self'", "data:", "https:"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"]
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            scriptSrcAttr: ["'unsafe-inline'"]
     }
   },
   crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' }, // Required for Google Sign-In popup
