@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NF6 Family Office - Financial Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --tiller-green:#0D8043;--tiller-green-light:#E6F4EA;--tiller-green-dark:#0A6B37;
+  --tiller-blue:#1A73E8;--tiller-red:#D93025;--tiller-orange:#F29900;
+  --tiller-bg:#F8F9FA;--tiller-white:#FFFFFF;--tiller-border:#DADCE0;
+  --tiller-text:#202124;--tiller-text2:#5F6368;--tiller-text3:#80868B;
+  --tiller-hover:#F1F3F4;--shadow:0 1px 3px rgba(60,64,67,.15);
+  --shadow-lg:0 4px 16px rgba(60,64,67,.18);--radius:8px;
+}
+body{font-family:'Google Sans','Segoe UI',Roboto,sans-serif;background:var(--tiller-bg);color:var(--tiller-text);line-height:1.5}
+a{color:var(--tiller-blue);text-decoration:none}
+
+/* === TOP NAV (Tiller-style) === */
+.topnav{background:var(--tiller-white);border-bottom:1px solid var(--tiller-border);position:sticky;top:0;z-index:100;padding:0 24px;display:flex;align-items:center;height:56px;gap:24px}
+.topnav-brand{font-size:20px;font-weight:700;color:var(--tiller-green);letter-spacing:.5px;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.topnav-brand svg{width:28px;height:28px}
+.topnav-tabs{display:flex;gap:0;height:56px;overflow-x:auto;flex:1}
+.topnav-tab{padding:0 16px;font-size:13px;font-weight:500;color:var(--tiller-text2);cursor:pointer;display:flex;align-items:center;border-bottom:3px solid transparent;white-space:nowrap;transition:.2s}
+.topnav-tab:hover{color:var(--tiller-text);background:var(--tiller-hover)}
+.topnav-tab.active{color:var(--tiller-green);border-bottom-color:var(--tiller-green);font-weight:600}
+.topnav-right{display:flex;align-items:center;gap:12px;margin-left:auto;white-space:nowrap}
+.topnav-right .btn-plaid{background:var(--tiller-green);color:#fff;border:none;padding:8px 16px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;transition:.2s}
+.topnav-right .btn-plaid:hover{background:var(--tiller-green-dark)}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--tiller-green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+
+/* === LAYOUT === */
+.container{max-width:1320px;margin:0 auto;padding:24px}
+.page{display:none}.page.active{display:block}
+.page-header{margin-bottom:20px}
+.page-header h1{font-size:22px;font-weight:600;margin-bottom:2px}
+.page-header p{font-size:13px;color:var(--tiller-text2)}
+
+/* === TILLER-STYLE KPI STRIP === */
+.kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px}
+.kpi-card{background:var(--tiller-white);border:1px solid var(--tiller-border);border-radius:var(--radius);padding:16px 18px;transition:.2s}
+.kpi-card:hover{box-shadow:var(--shadow)}
+.kpi-card .label{font-size:11px;font-weight:500;color:var(--tiller-text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.kpi-card .value{font-size:26px;font-weight:600}
+.kpi-card .value.green{color:var(--tiller-green)}.kpi-card .value.red{color:var(--tiller-red)}
+.kpi-card .sub{font-size:11px;color:var(--tiller-text3);margin-top:4px}
+
+/* === CARDS (Tiller clean look) === */
+.card{background:var(--tiller-white);border:1px solid var(--tiller-border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--tiller-border);display:flex;align-items:center;justify-content:space-between}
+.card-header h3{font-size:14px;font-weight:600;color:var(--tiller-text)}
+.card-header .badge-count{background:var(--tiller-green-light);color:var(--tiller-green);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.card-body{padding:16px 18px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.chart-box{position:relative;height:260px}
+
+/* === SPREADSHEET TABLE (Tiller signature) === */
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{padding:8px 12px;text-align:left;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--tiller-text3);background:var(--tiller-bg);border-bottom:2px solid var(--tiller-border);position:sticky;top:56px}
+tbody td{padding:8px 12px;border-bottom:1px solid #F1F3F4}
+tbody tr:hover{background:#F8F9FA}
+tbody tr:nth-child(even){background:#FAFBFC}
+tbody tr:nth-child(even):hover{background:#F1F3F4}
+.text-right{text-align:right}.text-center{text-align:center}
+.fw600{font-weight:600}.green{color:var(--tiller-green)}.red{color:var(--tiller-red)}.muted{color:var(--tiller-text3)}
+.mono{font-family:'Roboto Mono',monospace;font-size:12px}
+
+/* === BADGES === */
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;letter-spacing:.3px}
+.badge-green{background:var(--tiller-green-light);color:var(--tiller-green)}
+.badge-blue{background:#E8F0FE;color:#1A73E8}
+.badge-orange{background:#FEF7E0;color:#E37400}
+.badge-red{background:#FCE8E6;color:#C5221F}
+.badge-gray{background:#F1F3F4;color:#5F6368}
+
+/* === INSTITUTION DOT === */
+.idot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;flex-shrink:0}
+
+/* === ENTITY GRID === */
+.entity-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.entity-tile{background:var(--tiller-white);border:1px solid var(--tiller-border);border-radius:var(--radius);padding:14px 16px;cursor:default;transition:.15s}
+.entity-tile:hover{border-color:var(--tiller-green);box-shadow:var(--shadow)}
+.entity-tile .name{font-size:14px;font-weight:600;margin-bottom:2px}
+.entity-tile .meta{font-size:11px;color:var(--tiller-text3)}
+.entity-tile .bal{font-size:20px;font-weight:600;color:var(--tiller-green);margin-top:6px}
+
+/* === SEARCH === */
+.search-input{padding:8px 12px;border:1px solid var(--tiller-border);border-radius:20px;font-size:13px;width:280px;outline:none;font-family:inherit;transition:.2s}
+.search-input:focus{border-color:var(--tiller-green);box-shadow:0 0 0 3px rgba(13,128,67,.12)}
+select.filter-select{padding:8px 12px;border:1px solid var(--tiller-border);border-radius:20px;font-size:13px;outline:none;font-family:inherit;background:#fff;cursor:pointer}
+
+/* === PLAID MODAL === */
+.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:200}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:12px;width:95%;max-width:480px;overflow:hidden;box-shadow:var(--shadow-lg)}
+.modal-header{padding:20px 24px;border-bottom:1px solid var(--tiller-border);display:flex;align-items:center;justify-content:space-between}
+.modal-header h2{font-size:18px;font-weight:600}
+.modal-close{background:none;border:none;font-size:24px;cursor:pointer;color:var(--tiller-text3);width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%}
+.modal-close:hover{background:var(--tiller-hover)}
+.modal-body{padding:24px}
+.modal-body p{font-size:14px;color:var(--tiller-text2);margin-bottom:16px;line-height:1.6}
+.plaid-btn{width:100%;padding:14px;border-radius:8px;font-size:15px;font-weight:600;border:none;cursor:pointer;margin-bottom:10px;transition:.2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.plaid-btn.primary{background:var(--tiller-green);color:#fff}.plaid-btn.primary:hover{background:var(--tiller-green-dark)}
+.plaid-btn.secondary{background:var(--tiller-bg);color:var(--tiller-text);border:1px solid var(--tiller-border)}.plaid-btn.secondary:hover{background:var(--tiller-hover)}
+.plaid-status{margin-top:16px;padding:12px;border-radius:8px;font-size:13px;display:none}
+.plaid-status.success{display:block;background:var(--tiller-green-light);color:var(--tiller-green)}
+.plaid-status.error{display:block;background:#FCE8E6;color:#C5221F}
+.plaid-status.info{display:block;background:#E8F0FE;color:#1A73E8}
+.connected-accounts{margin-top:16px}.connected-accounts .acct-item{padding:10px 12px;border:1px solid var(--tiller-border);border-radius:6px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.connected-accounts .acct-item .left{display:flex;align-items:center;gap:10px}
+.connected-accounts .acct-item .inst-icon{width:32px;height:32px;border-radius:6px;background:var(--tiller-green-light);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:var(--tiller-green)}
+
+/* === BUG LOG === */
+.bug-log{position:fixed;bottom:16px;right:16px;z-index:300}
+.bug-toggle{width:40px;height:40px;border-radius:50%;background:var(--tiller-text);color:#fff;border:none;cursor:pointer;font-size:18px;box-shadow:var(--shadow-lg);display:flex;align-items:center;justify-content:center}
+.bug-panel{position:absolute;bottom:50px;right:0;width:400px;max-height:360px;background:#fff;border:1px solid var(--tiller-border);border-radius:var(--radius);box-shadow:var(--shadow-lg);display:none;flex-direction:column}
+.bug-panel.show{display:flex}
+.bug-panel-header{padding:12px 16px;border-bottom:1px solid var(--tiller-border);font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:space-between}
+.bug-panel-body{flex:1;overflow-y:auto;padding:8px;font-size:12px;font-family:'Roboto Mono',monospace}
+.bug-entry{padding:6px 8px;border-bottom:1px solid #f1f3f4;line-height:1.4}
+.bug-entry .time{color:var(--tiller-text3);margin-right:6px}
+.bug-entry.error{color:var(--tiller-red)}.bug-entry.warn{color:var(--tiller-orange)}.bug-entry.info{color:var(--tiller-blue)}
+
+/* === RESPONSIVE === */
+@media(max-width:900px){
+  .topnav{padding:0 12px;gap:8px;overflow-x:auto}
+  .topnav-tab{padding:0 10px;font-size:12px}
+  .topnav-right .btn-plaid span.label{display:none}
+  .container{padding:16px}
+  .kpi-strip{grid-template-columns:1fr 1fr}
+  .grid-2{grid-template-columns:1fr}
+  .entity-grid{grid-template-columns:1fr}
+  .search-input{width:100%}
+}
+@media(max-width:480px){
+  .kpi-strip{grid-template-columns:1fr}
+  .kpi-card .value{font-size:22px}
+  .bug-panel{width:calc(100vw - 32px);right:-8px}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP NAVIGATION -->
+<nav class="topnav">
+  <div class="topnav-brand">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/></svg>
+    NF6
+  </div>
+  <div class="topnav-tabs" id="navTabs">
+    <div class="topnav-tab active" onclick="nav('dashboard',this)">Dashboard</div>
+    <div class="topnav-tab" onclick="nav('networth',this)">Net Worth</div>
+    <div class="topnav-tab" onclick="nav('balances',this)">Balances</div>
+    <div class="topnav-tab" onclick="nav('entities',this)">Entities</div>
+    <div class="topnav-tab" onclick="nav('institutions',this)">Institutions</div>
+    <div class="topnav-tab" onclick="nav('qbo',this)">QBO</div>
+    <div class="topnav-tab" onclick="nav('investments',this)">Investments</div>
+    <div class="topnav-tab" onclick="nav('transactions',this)">Transactions</div>
+  </div>
+  <div class="topnav-right">
+    <button class="btn-plaid" onclick="openPlaid()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      <span class="label">Connect Account</span>
+    </button>
+    <div class="avatar">MN</div>
+  </div>
+</nav>
+
+<!-- ===== DASHBOARD ===== -->
+<div class="container">
+<div class="page active" id="pg-dashboard">
+  <div class="page-header"><h1>Financial Overview</h1><p>Consolidated view across 20 entities, 9 institutions, 42 accounts &middot; Updated Feb 19, 2026</p></div>
+  <div class="kpi-strip" id="dKpis"></div>
+  <div class="grid-2">
+    <div class="card"><div class="card-header"><h3>Assets by Institution</h3></div><div class="card-body"><div class="chart-box"><canvas id="cInst"></canvas></div></div></div>
+    <div class="card"><div class="card-header"><h3>Asset Allocation</h3></div><div class="card-body"><div class="chart-box"><canvas id="cAlloc"></canvas></div></div></div>
+  </div>
+  <div class="grid-2">
+    <div class="card"><div class="card-header"><h3>Currency Exposure</h3></div><div class="card-body"><div class="chart-box"><canvas id="cCurr"></canvas></div></div></div>
+    <div class="card"><div class="card-header"><h3>Top Accounts</h3></div><div class="card-body"><div class="chart-box"><canvas id="cTop"></canvas></div></div></div>
+  </div>
+</div>
+
+<!-- ===== NET WORTH ===== -->
+<div class="page" id="pg-networth">
+  <div class="page-header"><h1>Net Worth</h1><p>Total assets minus liabilities across all entities</p></div>
+  <div class="kpi-strip" id="nwKpis"></div>
+  <div class="card"><div class="card-header"><h3>Breakdown</h3></div><div class="card-body" style="padding:0"><table><thead><tr><th>Category</th><th class="text-right">USD Value</th><th class="text-right">% of Total</th></tr></thead><tbody id="nwTbl"></tbody></table></div></div>
+</div>
+
+<!-- ===== BALANCES ===== -->
+<div class="page" id="pg-balances">
+  <div class="page-header"><h1>All Balances</h1><p>Spreadsheet view of every account</p></div>
+  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+    <input class="search-input" id="bSearch" placeholder="Search accounts..." oninput="renderBalances()">
+    <select class="filter-select" id="bInstF" onchange="renderBalances()"><option value="all">All Institutions</option></select>
+    <select class="filter-select" id="bCurrF" onchange="renderBalances()"><option value="all">All Currencies</option><option>USD</option><option>EUR</option><option>COP</option></select>
+  </div>
+  <div class="card"><div style="overflow-x:auto"><table><thead><tr><th>Account</th><th>Entity</th><th>Institution</th><th>Type</th><th>Curr</th><th class="text-right">Balance</th><th class="text-right">USD Equiv</th></tr></thead><tbody id="bTbl"></tbody></table></div></div>
+</div>
+
+<!-- ===== ENTITIES ===== -->
+<div class="page" id="pg-entities">
+  <div class="page-header"><h1>Entities</h1><p>20 legal entities across multiple jurisdictions</p></div>
+  <input class="search-input" id="eSearch" placeholder="Search entities..." oninput="renderEntities()" style="margin-bottom:16px">
+  <div class="entity-grid" id="eGrid"></div>
+</div>
+
+<!-- ===== INSTITUTIONS ===== -->
+<div class="page" id="pg-institutions">
+  <div class="page-header"><h1>Institutions</h1><p>9 financial institutions across 3 countries</p></div>
+  <div id="iGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px"></div>
+</div>
+
+<!-- ===== QBO ===== -->
+<div class="page" id="pg-qbo">
+  <div class="page-header"><h1>QuickBooks Online</h1><p>Operating accounts managed via QBO</p></div>
+  <div class="kpi-strip" id="qKpis"></div>
+  <div class="grid-2">
+    <div class="card"><div class="card-header"><h3>Operating Balances</h3></div><div class="card-body"><div class="chart-box"><canvas id="cQbo"></canvas></div></div></div>
+    <div class="card"><div class="card-header"><h3>Account Detail</h3></div><div class="card-body" style="padding:0"><table><thead><tr><th>Entity</th><th>ID</th><th class="text-right">Balance</th></tr></thead><tbody id="qTbl"></tbody></table></div></div>
+  </div>
+</div>
+
+<!-- ===== INVESTMENTS ===== -->
+<div class="page" id="pg-investments">
+  <div class="page-header"><h1>Investments</h1><p>Charles Schwab &amp; J.P. Morgan portfolio</p></div>
+  <div class="kpi-strip" id="vKpis"></div>
+  <div class="card"><div class="card-header"><h3>Portfolio</h3></div><div class="card-body" style="padding:0"><table><thead><tr><th>Account</th><th>Institution</th><th>Type</th><th class="text-right">Balance</th><th class="text-right">Day Change</th></tr></thead><tbody id="vTbl"></tbody></table></div></div>
+  <div class="card" style="margin-top:16px"><div class="card-header"><h3>Distribution</h3></div><div class="card-body"><div class="chart-box"><canvas id="cInv"></canvas></div></div></div>
+</div>
+
+<!-- ===== TRANSACTIONS ===== -->
+<div class="page" id="pg-transactions">
+  <div class="page-header"><h1>Transactions</h1><p>Recent transaction feed (Plaid-powered when connected)</p></div>
+  <div id="txContent"></div>
+</div>
+</div>
+
+<!-- PLAID MODAL -->
+<div class="modal-overlay" id="plaidModal">
+  <div class="modal">
+    <div class="modal-header"><h2>Connect Bank Account</h2><button class="modal-close" onclick="closePlaid()">&times;</button></div>
+    <div class="modal-body">
+      <p>Link your bank accounts securely with Plaid to automatically import balances and transactions into your dashboard.</p>
+      <button class="plaid-btn primary" onclick="launchPlaidLink()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+        Connect with Plaid
+      </button>
+      <button class="plaid-btn secondary" onclick="launchPlaidSandbox()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Demo Mode (Sandbox)
+      </button>
+      <div class="plaid-status" id="plaidStatus"></div>
+      <div class="connected-accounts" id="connectedAccounts"></div>
+    </div>
+  </div>
+</div>
+
+<!-- BUG LOG -->
+<div class="bug-log">
+  <button class="bug-toggle" onclick="toggleBugLog()" title="Bug Log">&#128027;</button>
+  <div class="bug-panel" id="bugPanel">
+    <div class="bug-panel-header"><span>Bug Log</span><button style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--tiller-text3)" onclick="clearBugLog()">Clear</button></div>
+    <div class="bug-panel-body" id="bugBody"></div>
+  </div>
+</div>
+
+<script>
+// =================================
+// DATA
+// =================================
+const FX={USD:1,EUR:1.08,COP:0.0002712};
+const entities=[
+{id:'e1',name:'Michael Nguyen',type:'Personal',jur:'US-PR'},
+{id:'e2',name:'MN Family Trust',type:'Trust',jur:'US'},
+{id:'e3',name:'The 2019 MN Family Revocable Trust',type:'Trust',jur:'US'},
+{id:'e4',name:'YM PR Investment Group LLC',type:'LLC',jur:'US-PR'},
+{id:'e5',name:'MBJ DR INC',type:'Inc',jur:'US'},
+{id:'e6',name:'NF USA CA LLC',type:'LLC',jur:'US-CA'},
+{id:'e7',name:'NF USA TX LLC',type:'LLC',jur:'US-TX'},
+{id:'e8',name:'NF6 Ventures LLC',type:'LLC',jur:'US'},
+{id:'e9',name:'Blue Panda Family LP',type:'LP',jur:'US'},
+{id:'e10',name:'NGM Woodland Park ASC LLC',type:'LLC',jur:'US'},
+{id:'e11',name:'NF6 Joint MGMT LLC',type:'LLC',jur:'US'},
+{id:'e12',name:'NF6 Tiger Capital LLC',type:'LLC',jur:'US'},
+{id:'e13',name:'TLMND LLC',type:'LLC',jur:'US'},
+{id:'e14',name:'NF6 Family Holding LP',type:'LP',jur:'US'},
+{id:'e15',name:'NF6 Capital LLC',type:'LLC',jur:'US'},
+{id:'e16',name:'BPMGMT LLC',type:'LLC',jur:'US'},
+{id:'e17',name:'NF6 Spain Holdings SL',type:'SL',jur:'Spain'},
+{id:'e18',name:'NF Europe Holdings 2022 SL',type:'SL',jur:'Spain'},
+{id:'e19',name:'Paris Thacko',type:'Company',jur:'Spain'},
+{id:'e20',name:'MN Dorado Property',type:'Personal',jur:'US-PR'}
+];
+const insts=[
+{id:'i1',name:'FirstBank Puerto Rico',type:'Bank',country:'US-PR',color:'#1a5276'},
+{id:'i2',name:'Bank of America',type:'Bank',country:'US',color:'#c0392b'},
+{id:'i3',name:'Chase',type:'Bank',country:'US',color:'#2c3e50'},
+{id:'i4',name:'J.P. Morgan',type:'Investment Bank',country:'US',color:'#1a3c6e'},
+{id:'i5',name:'Charles Schwab',type:'Brokerage',country:'US',color:'#00a0df'},
+{id:'i6',name:'Santander',type:'Bank',country:'Spain',color:'#ec0000'},
+{id:'i7',name:'Bancolombia',type:'Bank',country:'Colombia',color:'#003DA5'},
+{id:'i8',name:'Banco de Occidente',type:'Bank',country:'Colombia',color:'#005ca9'},
+{id:'i9',name:'QuickBooks Online',type:'Accounting',country:'US',color:'#2ca01c'}
+];
+const accts=[
+{id:'a1',name:'Michael Nguyen PMA',num:'030126916',eid:'e1',iid:'i1',type:'Checking',cur:'USD',bal:22.27,liab:false},
+{id:'a2',name:'YM PR Investment Group LLC',num:'030138337',eid:'e4',iid:'i1',type:'Checking',cur:'USD',bal:227434.12,liab:false},
+{id:'a3',name:'YM PR Investment Group LLC',num:'030219175',eid:'e4',iid:'i1',type:'Savings',cur:'USD',bal:47960.37,liab:false},
+{id:'a4',name:'MN Family Trust',num:'030228875',eid:'e2',iid:'i1',type:'Checking',cur:'USD',bal:2322.44,liab:false},
+{id:'a5',name:'2019 MN Family Revocable Trust',num:'030267013',eid:'e3',iid:'i1',type:'Checking',cur:'USD',bal:50000,liab:false},
+{id:'a6',name:'Michael Nguyen PH',num:'030290252',eid:'e1',iid:'i1',type:'Checking',cur:'USD',bal:1.59,liab:false},
+{id:'a7',name:'BoFA Personal Banking',num:'****8651',eid:'e1',iid:'i2',type:'Checking',cur:'USD',bal:5010.86,liab:false},
+{id:'a8',name:'MN Personal Checking',num:'****0451',eid:'e1',iid:'i3',type:'Checking',cur:'USD',bal:5000,liab:false},
+{id:'a9',name:'MN - Dorado PH',num:'****6179',eid:'e20',iid:'i3',type:'Checking',cur:'USD',bal:22347.06,liab:false},
+{id:'a10',name:'MN Personal Savings',num:'****0451',eid:'e1',iid:'i3',type:'Savings',cur:'USD',bal:4199.73,liab:false},
+{id:'a11',name:'Mortgage Loan',num:'****3064',eid:'e20',iid:'i3',type:'Mortgage',cur:'USD',bal:2494214.24,liab:true},
+{id:'a12',name:'NF6 Tiger Capital LLC',num:'****2502',eid:'e12',iid:'i4',type:'Investment',cur:'USD',bal:10,liab:false},
+{id:'a13',name:'NF6 Tiger Capital LLC',num:'****4974',eid:'e12',iid:'i4',type:'Investment',cur:'USD',bal:0,liab:false},
+{id:'a14',name:'NF6 Capital',num:'Z25411126',eid:'e15',iid:'i5',type:'Brokerage',cur:'USD',bal:1565.04,liab:false,dc:-4.42,dp:-0.28},
+{id:'a15',name:'MN Personal',num:'Z27319007',eid:'e1',iid:'i5',type:'Brokerage',cur:'USD',bal:1809397.56,liab:false,dc:21326.35,dp:1.19},
+{id:'a16',name:'TLMND',num:'Z27516454',eid:'e13',iid:'i5',type:'Brokerage',cur:'USD',bal:179907.47,liab:false,dc:0.64,dp:0.00},
+{id:'a17',name:'NF6 Tiger Capital VOO',num:'Z29628205',eid:'e12',iid:'i5',type:'Brokerage',cur:'USD',bal:2130.42,liab:false,dc:-0.67,dp:-0.03},
+{id:'a18',name:'NF6 Tiger Capital Dividends',num:'Z40362104',eid:'e12',iid:'i5',type:'Brokerage',cur:'USD',bal:3580.71,liab:false,dc:-8.66,dp:-0.24},
+{id:'a19',name:'MN Personal Investment',num:'****748',eid:'e1',iid:'i5',type:'Investment',cur:'USD',bal:10996.90,liab:false},
+{id:'a20',name:'NF6 Family Holding',num:'****316',eid:'e14',iid:'i5',type:'Brokerage',cur:'USD',bal:324.79,liab:false},
+{id:'a21',name:'NF6 Tiger Capital',num:'****259',eid:'e12',iid:'i5',type:'Brokerage',cur:'USD',bal:1378.59,liab:false,dc:-2.56,dp:-0.19},
+{id:'a22',name:'2019 MN Family Trust',num:'****196',eid:'e3',iid:'i5',type:'Trust',cur:'USD',bal:0,liab:false},
+{id:'a23',name:'MN Family Trust',num:'****805',eid:'e2',iid:'i5',type:'Trust',cur:'USD',bal:0,liab:false},
+{id:'a24',name:'NF6 Spain Holdings SL',num:'ES09****8120',eid:'e17',iid:'i6',type:'Checking',cur:'EUR',bal:1248.48,liab:false},
+{id:'a25',name:'NF Europe Holdings 2022 SL',num:'ES44****8138',eid:'e18',iid:'i6',type:'Checking',cur:'EUR',bal:5730.70,liab:false},
+{id:'a26',name:'Paris Thacko',num:'ES66****0523',eid:'e19',iid:'i6',type:'Checking',cur:'EUR',bal:2731.81,liab:false},
+{id:'a27',name:'NF Europe Holdings 2022 SL USD',num:'ES49****1830',eid:'e18',iid:'i6',type:'Checking',cur:'USD',bal:2.07,liab:false},
+{id:'a28',name:'Bancolombia Savings',num:'029-000177-34',eid:'e1',iid:'i7',type:'Savings',cur:'COP',bal:49449012.26,liab:false},
+{id:'a29',name:'Bancolombia Additional',num:'029-****-XX',eid:'e1',iid:'i7',type:'Savings',cur:'COP',bal:150000000,liab:false},
+{id:'a30',name:'Occidente Holdings',num:'OCC-****',eid:'e1',iid:'i8',type:'Savings',cur:'COP',bal:127420185.74,liab:false},
+{id:'a31',name:'MBJ DR INC Operating',num:'QBO-MBJ',eid:'e5',iid:'i9',type:'Operating',cur:'USD',bal:9775,liab:false},
+{id:'a32',name:'NF USA CA LLC Operating',num:'QBO-NFCA',eid:'e6',iid:'i9',type:'Operating',cur:'USD',bal:200,liab:false},
+{id:'a33',name:'NF USA TX LLC Operating',num:'QBO-NFTX',eid:'e7',iid:'i9',type:'Operating',cur:'USD',bal:30535.86,liab:false},
+{id:'a34',name:'NF6 Ventures LLC Operating',num:'QBO-VENT',eid:'e8',iid:'i9',type:'Operating',cur:'USD',bal:301.64,liab:false},
+{id:'a35',name:'Blue Panda FLP Operating',num:'QBO-BPFLP',eid:'e9',iid:'i9',type:'Operating',cur:'USD',bal:1715,liab:false},
+{id:'a36',name:'NGM Woodland Park Operating',num:'QBO-NGM',eid:'e10',iid:'i9',type:'Operating',cur:'USD',bal:2550.55,liab:false},
+{id:'a37',name:'NF6 Joint MGMT Operating',num:'QBO-JMGMT',eid:'e11',iid:'i9',type:'Operating',cur:'USD',bal:75458.85,liab:false},
+{id:'a38',name:'NF6 Tiger Capital Operating',num:'QBO-TIGER',eid:'e12',iid:'i9',type:'Operating',cur:'USD',bal:1448,liab:false},
+{id:'a39',name:'TLMND LLC Operating',num:'QBO-TLMND',eid:'e13',iid:'i9',type:'Operating',cur:'USD',bal:67112.40,liab:false},
+{id:'a40',name:'NF6 Family Holding LP Operating',num:'QBO-NFHOLD',eid:'e14',iid:'i9',type:'Operating',cur:'USD',bal:1013,liab:false},
+{id:'a41',name:'NF6 Capital LLC Operating',num:'QBO-NFCAP',eid:'e15',iid:'i9',type:'Operating',cur:'USD',bal:1715,liab:false},
+{id:'a42',name:'BPMGMT LLC Operating',num:'QBO-BPMGMT',eid:'e16',iid:'i9',type:'Operating',cur:'USD',bal:2641.33,liab:false}
+];
+
+// =================================
+// HELPERS
+// =================================
+const usd=(b,c)=>b*(FX[c]||1);
+const $=(n)=>'$'+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+const $s=(n)=>{if(Math.abs(n)>=1e6)return'$'+(n/1e6).toFixed(2)+'M';if(Math.abs(n)>=1e3)return'$'+(n/1e3).toFixed(1)+'K';return'$'+n.toFixed(2)};
+const fl=(b,c)=>{if(c==='COP')return b.toLocaleString('en-US',{maximumFractionDigits:0})+' COP';if(c==='EUR')return'\u20AC'+b.toLocaleString('en-US',{minimumFractionDigits:2});return'$'+b.toLocaleString('en-US',{minimumFractionDigits:2})};
+const ent=(id)=>entities.find(e=>e.id===id);
+const inst=(id)=>insts.find(i=>i.id===id);
+const tA=accts.filter(a=>!a.liab).reduce((s,a)=>s+usd(a.bal,a.cur),0);
+const tL=accts.filter(a=>a.liab).reduce((s,a)=>s+usd(a.bal,a.cur),0);
+const nw=tA-tL;
+const badgeFor=(t)=>{const m={Checking:'blue',Savings:'green',Brokerage:'orange',Investment:'orange',Mortgage:'red',Trust:'green',Operating:'gray'};return m[t]||'gray'};
+
+// =================================
+// BUG LOG
+// =================================
+const bugLog=[];
+function logBug(level,msg){const ts=new Date().toLocaleTimeString();bugLog.push({ts,level,msg});renderBugLog();console[level==='error'?'error':level==='warn'?'warn':'log']('[BugLog]',msg)}
+function renderBugLog(){const el=document.getElementById('bugBody');if(!el)return;el.innerHTML=bugLog.map(b=>`<div class="bug-entry ${b.level}"><span class="time">${b.ts}</span>${b.msg}</div>`).join('')}
+function toggleBugLog(){document.getElementById('bugPanel').classList.toggle('show')}
+function clearBugLog(){bugLog.length=0;renderBugLog()}
+window.onerror=function(m,s,l){logBug('error',m+' ('+s+':'+l+')');return false};
+window.addEventListener('unhandledrejection',e=>logBug('error','Promise: '+e.reason));
+logBug('info','Dashboard initialized');
+
+// =================================
+// NAVIGATION
+// =================================
+function nav(page,tab){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('pg-'+page).classList.add('active');
+  document.querySelectorAll('.topnav-tab').forEach(t=>t.classList.remove('active'));
+  if(tab)tab.classList.add('active');
+  window.scrollTo(0,0);
+  const r={balances:renderBalances,entities:renderEntities,institutions:renderInsts,qbo:renderQBO,investments:renderInv,networth:renderNW,transactions:renderTx};
+  if(r[page])r[page]();
+  logBug('info','Navigate: '+page);
+}
+
+// =================================
+// DASHBOARD
+// =================================
+function renderDash(){
+  const dc=accts.reduce((s,a)=>s+(a.dc||0),0);
+  document.getElementById('dKpis').innerHTML=`
+    <div class="kpi-card"><div class="label">Net Worth</div><div class="value green">${$s(nw)}</div><div class="sub">Assets - Liabilities</div></div>
+    <div class="kpi-card"><div class="label">Total Assets</div><div class="value">${$s(tA)}</div><div class="sub">${accts.filter(a=>!a.liab).length} accounts</div></div>
+    <div class="kpi-card"><div class="label">Total Liabilities</div><div class="value red">${$s(tL)}</div><div class="sub">${accts.filter(a=>a.liab).length} accounts</div></div>
+    <div class="kpi-card"><div class="label">Day Change</div><div class="value ${dc>=0?'green':'red'}">${dc>=0?'+':''}${$s(Math.abs(dc))}</div><div class="sub">Schwab brokerage</div></div>
+    <div class="kpi-card"><div class="label">Entities</div><div class="value">${entities.length}</div><div class="sub">Legal structures</div></div>
+    <div class="kpi-card"><div class="label">Institutions</div><div class="value">${insts.length}</div><div class="sub">3 countries</div></div>`;
+
+  // Institution doughnut
+  const it={};accts.filter(a=>!a.liab).forEach(a=>{const i=inst(a.iid);it[i.name]=(it[i.name]||0)+usd(a.bal,a.cur)});
+  const il=Object.keys(it).sort((a,b)=>it[b]-it[a]);
+  new Chart(document.getElementById('cInst'),{type:'doughnut',data:{labels:il,datasets:[{data:il.map(l=>it[l]),backgroundColor:il.map(l=>insts.find(i=>i.name===l).color),borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},padding:6}}}}});
+
+  // Allocation doughnut
+  const tt={};accts.filter(a=>!a.liab).forEach(a=>{tt[a.type]=(tt[a.type]||0)+usd(a.bal,a.cur)});
+  const tl=Object.keys(tt).sort((a,b)=>tt[b]-tt[a]);
+  const tc=['#0D8043','#34A853','#1A73E8','#9334E6','#E37400','#00BCD4','#D93025','#F9AB00'];
+  new Chart(document.getElementById('cAlloc'),{type:'doughnut',data:{labels:tl,datasets:[{data:tl.map(l=>tt[l]),backgroundColor:tc,borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},padding:6}}}}});
+
+  // Currency bar
+  const ct={};accts.filter(a=>!a.liab).forEach(a=>{ct[a.cur]=(ct[a.cur]||0)+usd(a.bal,a.cur)});
+  new Chart(document.getElementById('cCurr'),{type:'bar',data:{labels:Object.keys(ct),datasets:[{data:Object.values(ct),backgroundColor:['#0D8043','#F9AB00','#E37400'],borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>$s(v)}}}}});
+
+  // Top accounts bar
+  const top=accts.filter(a=>!a.liab).map(a=>({...a,u:usd(a.bal,a.cur)})).sort((a,b)=>b.u-a.u).slice(0,10);
+  new Chart(document.getElementById('cTop'),{type:'bar',data:{labels:top.map(a=>a.name),datasets:[{data:top.map(a=>a.u),backgroundColor:top.map(a=>inst(a.iid).color),borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>$s(v)}}}}});
+  logBug('info','Dashboard rendered');
+}
+
+// =================================
+// NET WORTH
+// =================================
+function renderNW(){
+  document.getElementById('nwKpis').innerHTML=`
+    <div class="kpi-card"><div class="label">Net Worth</div><div class="value green">${$(nw)}</div></div>
+    <div class="kpi-card"><div class="label">Total Assets</div><div class="value">${$(tA)}</div></div>
+    <div class="kpi-card"><div class="label">Total Liabilities</div><div class="value red">${$(tL)}</div></div>`;
+  const cats={};accts.forEach(a=>{const k=a.liab?'Liabilities - '+a.type:'Assets - '+a.type;cats[k]=(cats[k]||0)+usd(a.bal,a.cur)});
+  const sorted=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+  const tot=tA+tL;
+  document.getElementById('nwTbl').innerHTML=sorted.map(([c,v])=>{
+    const isL=c.startsWith('Liab');
+    return`<tr><td class="fw600">${c}</td><td class="text-right fw600 ${isL?'red':''}">${isL?'-':''}${$(v)}</td><td class="text-right muted">${(v/tot*100).toFixed(1)}%</td></tr>`
+  }).join('')+`<tr style="background:var(--tiller-green-light);font-weight:700"><td>NET WORTH</td><td class="text-right green">${$(nw)}</td><td class="text-right">-</td></tr>`;
+}
+
+// =================================
+// BALANCES (Spreadsheet view)
+// =================================
+function renderBalances(){
+  const s=document.getElementById('bInstF');
+  if(s&&s.options.length<=1)insts.forEach(i=>{const o=document.createElement('option');o.value=i.id;o.textContent=i.name;s.appendChild(o)});
+  const q=(document.getElementById('bSearch')?.value||'').toLowerCase();
+  const fi=document.getElementById('bInstF')?.value||'all';
+  const fc=document.getElementById('bCurrF')?.value||'all';
+  const f=accts.filter(a=>{
+    if(q&&!a.name.toLowerCase().includes(q)&&!a.num.toLowerCase().includes(q))return false;
+    if(fi!=='all'&&a.iid!==fi)return false;
+    if(fc!=='all'&&a.cur!==fc)return false;return true});
+  document.getElementById('bTbl').innerHTML=f.map(a=>{
+    const e=ent(a.eid),i=inst(a.iid),u=usd(a.bal,a.cur);
+    return`<tr><td><span class="fw600">${a.name}</span><br><span class="mono muted">${a.num}</span></td><td>${e.name}</td><td><span class="idot" style="background:${i.color}"></span>${i.name}</td><td><span class="badge badge-${badgeFor(a.type)}">${a.type}</span></td><td>${a.cur}</td><td class="text-right fw600 ${a.liab?'red':''}">${a.liab?'-':''}${fl(a.bal,a.cur)}</td><td class="text-right fw600 ${a.liab?'red':''}">${a.liab?'-':''}${$(u)}</td></tr>`}).join('');
+}
+
+// =================================
+// ENTITIES
+// =================================
+function renderEntities(){
+  const q=(document.getElementById('eSearch')?.value||'').toLowerCase();
+  const f=entities.filter(e=>!q||e.name.toLowerCase().includes(q)||e.type.toLowerCase().includes(q));
+  document.getElementById('eGrid').innerHTML=f.map(e=>{
+    const ea=accts.filter(a=>a.eid===e.id);
+    const as=ea.filter(a=>!a.liab).reduce((s,a)=>s+usd(a.bal,a.cur),0);
+    const lb=ea.filter(a=>a.liab).reduce((s,a)=>s+usd(a.bal,a.cur),0);
+    const n=as-lb;
+    return`<div class="entity-tile"><div style="display:flex;justify-content:space-between;align-items:start"><div><div class="name">${e.name}</div><div class="meta">${e.type} &middot; ${e.jur}</div></div><span class="badge badge-${e.type==='Trust'?'green':e.type==='Personal'?'blue':'gray'}">${e.type}</span></div><div class="bal">${n<0?'-':''}${$(Math.abs(n))}</div><div class="meta">${ea.length} account${ea.length!==1?'s':''}${lb>0?' &middot; <span class="red">Liab: '+$(lb)+'</span>':''}</div></div>`}).join('');
+}
+
+// =================================
+// INSTITUTIONS
+// =================================
+function renderInsts(){
+  document.getElementById('iGrid').innerHTML=insts.map(i=>{
+    const ia=accts.filter(a=>a.iid===i.id);
+    const as=ia.filter(a=>!a.liab).reduce((s,a)=>s+usd(a.bal,a.cur),0);
+    const lb=ia.filter(a=>a.liab).reduce((s,a)=>s+usd(a.bal,a.cur),0);
+    return`<div class="card"><div class="card-header"><h3><span class="idot" style="background:${i.color}"></span>${i.name}</h3><span class="badge badge-gray">${i.country}</span></div><div class="card-body"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px"><div><div class="label" style="font-size:10px;color:var(--tiller-text3)">ACCOUNTS</div><div class="fw600" style="font-size:16px">${ia.length}</div></div><div><div class="label" style="font-size:10px;color:var(--tiller-text3)">ASSETS</div><div class="fw600 green" style="font-size:16px">${$s(as)}</div></div><div><div class="label" style="font-size:10px;color:var(--tiller-text3)">${lb>0?'LIABILITIES':'NET'}</div><div class="fw600 ${lb>0?'red':''}" style="font-size:16px">${lb>0?$s(lb):$s(as)}</div></div></div><table style="font-size:12px"><thead><tr><th style="font-size:9px">Account</th><th style="font-size:9px">Type</th><th style="font-size:9px" class="text-right">Balance</th></tr></thead><tbody>${ia.map(a=>`<tr><td>${a.name}</td><td><span class="badge badge-${badgeFor(a.type)}">${a.type}</span></td><td class="text-right fw600 ${a.liab?'red':''}">${a.liab?'-':''}${fl(a.bal,a.cur)}</td></tr>`).join('')}</tbody></table></div></div>`}).join('');
+}
+
+// =================================
+// QBO
+// =================================
+function renderQBO(){
+  const qa=accts.filter(a=>a.iid==='i9');
+  const tot=qa.reduce((s,a)=>s+a.bal,0);
+  const mx=qa.reduce((m,a)=>a.bal>m.bal?a:m,qa[0]);
+  document.getElementById('qKpis').innerHTML=`
+    <div class="kpi-card"><div class="label">Total QBO Operating</div><div class="value green">${$(tot)}</div><div class="sub">${qa.length} accounts</div></div>
+    <div class="kpi-card"><div class="label">Largest</div><div class="value">${$(mx.bal)}</div><div class="sub">${mx.name}</div></div>
+    <div class="kpi-card"><div class="label">Average</div><div class="value">${$(tot/qa.length)}</div></div>`;
+  const s=[...qa].sort((a,b)=>b.bal-a.bal);
+  new Chart(document.getElementById('cQbo'),{type:'bar',data:{labels:s.map(a=>ent(a.eid).name),datasets:[{data:s.map(a=>a.bal),backgroundColor:'#2ca01c',borderRadius:6}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>$s(v)}}}}});
+  document.getElementById('qTbl').innerHTML=s.map(a=>`<tr><td class="fw600">${ent(a.eid).name}</td><td class="mono muted">${a.num}</td><td class="text-right fw600">${$(a.bal)}</td></tr>`).join('')+`<tr style="background:var(--tiller-green-light);font-weight:700"><td>TOTAL</td><td></td><td class="text-right">${$(tot)}</td></tr>`;
+}
+
+// =================================
+// INVESTMENTS
+// =================================
+function renderInv(){
+  const ia=accts.filter(a=>(a.iid==='i5'||a.iid==='i4')&&!a.liab);
+  const tot=ia.reduce((s,a)=>s+a.bal,0);
+  const dt=ia.reduce((s,a)=>s+(a.dc||0),0);
+  document.getElementById('vKpis').innerHTML=`
+    <div class="kpi-card"><div class="label">Total Portfolio</div><div class="value">${$(tot)}</div><div class="sub">${ia.length} accounts</div></div>
+    <div class="kpi-card"><div class="label">Day Change</div><div class="value ${dt>=0?'green':'red'}">${dt>=0?'+':''}${$(Math.abs(dt))}</div></div>
+    <div class="kpi-card"><div class="label">% of Net Worth</div><div class="value">${(tot/nw*100).toFixed(1)}%</div></div>`;
+  const s=[...ia].sort((a,b)=>b.bal-a.bal);
+  document.getElementById('vTbl').innerHTML=s.map(a=>{
+    const i=inst(a.iid),dc=a.dc||0,dp=a.dp||0;
+    return`<tr><td><span class="fw600">${a.name}</span><br><span class="mono muted">${a.num}</span></td><td><span class="idot" style="background:${i.color}"></span>${i.name}</td><td><span class="badge badge-${badgeFor(a.type)}">${a.type}</span></td><td class="text-right fw600">${$(a.bal)}</td><td class="text-right fw600 ${dc>=0?'green':'red'}">${dc!==0?(dc>0?'+':'')+$(Math.abs(dc))+' ('+(dp>0?'+':'')+dp.toFixed(2)+'%)':'-'}</td></tr>`}).join('');
+  const ca=s.filter(a=>a.bal>0);
+  new Chart(document.getElementById('cInv'),{type:'doughnut',data:{labels:ca.map(a=>a.name),datasets:[{data:ca.map(a=>a.bal),backgroundColor:['#0D8043','#34A853','#1A73E8','#9334E6','#E37400','#00BCD4','#F9AB00','#D93025','#607D8B','#795548'],borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},padding:6}}}}});
+}
+
+// =================================
+// TRANSACTIONS (Plaid-powered)
+// =================================
+function renderTx(){
+  const el=document.getElementById('txContent');
+  if(plaidConnected.length===0){
+    el.innerHTML=`<div class="card"><div class="card-body" style="text-align:center;padding:60px"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--tiller-text3)" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg><h3 style="margin-top:16px;color:var(--tiller-text2)">No accounts connected</h3><p style="color:var(--tiller-text3);margin:8px 0 20px">Connect a bank account via Plaid to see live transactions</p><button class="plaid-btn primary" style="width:auto;display:inline-flex;padding:10px 24px" onclick="openPlaid()">Connect Account</button></div></div>`;
+  } else {
+    el.innerHTML=`<div class="card"><div class="card-header"><h3>Connected Transactions</h3><span class="badge badge-green">${plaidConnected.length} linked</span></div><div class="card-body" style="padding:0"><table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Account</th><th class="text-right">Amount</th></tr></thead><tbody>${generateDemoTx()}</tbody></table></div></div>`;
+  }
+}
+function generateDemoTx(){
+  const txs=[
+    {d:'2026-02-19',desc:'Whole Foods Market',cat:'Groceries',acct:'Chase ****0451',amt:-127.45},
+    {d:'2026-02-18',desc:'Transfer from Schwab',cat:'Transfer',acct:'BoFA ****8651',amt:5000},
+    {d:'2026-02-18',desc:'AT&T Wireless',cat:'Utilities',acct:'Chase ****0451',amt:-89.99},
+    {d:'2026-02-17',desc:'Amazon.com',cat:'Shopping',acct:'Chase ****0451',amt:-234.12},
+    {d:'2026-02-17',desc:'Dorado Beach Resort',cat:'Travel',acct:'FirstBank 030126916',amt:-450.00},
+    {d:'2026-02-16',desc:'Dividend - VOO',cat:'Income',acct:'Schwab Z29628205',amt:142.30},
+    {d:'2026-02-15',desc:'Property Tax PR',cat:'Taxes',acct:'FirstBank 030138337',amt:-3200.00},
+    {d:'2026-02-14',desc:'Wire Transfer - NF6 Spain',cat:'Transfer',acct:'Santander ES09',amt:-2500.00}
+  ];
+  return txs.map(t=>`<tr><td class="mono">${t.d}</td><td class="fw600">${t.desc}</td><td><span class="badge badge-${t.amt>0?'green':'gray'}">${t.cat}</span></td><td class="muted">${t.acct}</td><td class="text-right fw600 ${t.amt>=0?'green':'red'}">${t.amt>=0?'+':''}${$(Math.abs(t.amt))}</td></tr>`).join('');
+}
+
+// =================================
+// PLAID INTEGRATION
+// =================================
+let plaidConnected=[];
+function openPlaid(){document.getElementById('plaidModal').classList.add('show');logBug('info','Plaid modal opened')}
+function closePlaid(){document.getElementById('plaidModal').classList.remove('show')}
+
+function launchPlaidLink(){
+  const st=document.getElementById('plaidStatus');
+  st.className='plaid-status info';st.style.display='block';st.textContent='Requesting link token from server...';
+  logBug('info','Plaid Link: requesting link token');
+
+  fetch('/api/create-link-token',{method:'POST',headers:{'Content-Type':'application/json'}})
+  .then(r=>r.json())
+  .then(data=>{
+    logBug('info','Link token received: '+data.link_token.substring(0,20)+'...');
+    if(data.link_token.startsWith('link-sandbox')){
+      st.className='plaid-status info';
+      st.textContent='Demo mode: Set PLAID_CLIENT_ID & PLAID_SECRET env vars on Render for real Plaid Link. Using sandbox flow instead.';
+      setTimeout(()=>launchPlaidSandbox(),1500);
+      return;
+    }
+    const handler=Plaid.create({token:data.link_token,
+      onSuccess:(public_token,metadata)=>{
+        logBug('info','Plaid success: '+metadata.institution.name);
+        st.className='plaid-status success';st.textContent='Connected: '+metadata.institution.name;
+        plaidConnected.push({name:metadata.institution.name,id:metadata.institution.institution_id,accounts:metadata.accounts});
+        renderPlaidAccounts();
+        fetch('/api/exchange-token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({public_token})});
+      },
+      onExit:(err)=>{if(err){logBug('error','Plaid exit error: '+JSON.stringify(err));st.className='plaid-status error';st.textContent='Error: '+err.display_message}},
+      onEvent:(name)=>{logBug('info','Plaid event: '+name)}
+    });
+    handler.open();
+  })
+  .catch(err=>{logBug('error','Link token fetch failed: '+err);st.className='plaid-status error';st.textContent='Server error. Using sandbox demo instead.';setTimeout(()=>launchPlaidSandbox(),1500)});
+}
+
+function launchPlaidSandbox(){
+  const st=document.getElementById('plaidStatus');
+  logBug('info','Plaid sandbox demo activated');
+  st.className='plaid-status info';st.style.display='block';st.textContent='Connecting to sandbox...';
+  setTimeout(()=>{
+    plaidConnected.push({name:'Chase (Sandbox)',id:'ins_3',accounts:[{name:'Plaid Checking',mask:'0000',type:'depository'},{name:'Plaid Savings',mask:'1111',type:'depository'}]});
+    plaidConnected.push({name:'Bank of America (Sandbox)',id:'ins_1',accounts:[{name:'Plaid Money Market',mask:'2222',type:'depository'}]});
+    st.className='plaid-status success';st.textContent='2 sandbox institutions connected with 3 accounts';
+    renderPlaidAccounts();
+    logBug('info','Sandbox connected: 2 institutions, 3 accounts');
+  },1200);
+}
+
+function renderPlaidAccounts(){
+  const el=document.getElementById('connectedAccounts');
+  el.innerHTML='<div style="font-size:12px;font-weight:600;color:var(--tiller-text2);margin-bottom:8px;margin-top:8px">CONNECTED ACCOUNTS</div>'+
+    plaidConnected.map(c=>c.accounts.map(a=>`<div class="acct-item"><div class="left"><div class="inst-icon">${c.name.charAt(0)}</div><div><div class="fw600" style="font-size:13px">${a.name}</div><div class="muted" style="font-size:11px">${c.name} &middot; ****${a.mask}</div></div></div><span class="badge badge-green">Linked</span></div>`).join('')).join('');
+}
+
+// =================================
+// INIT
+// =================================
+renderDash();
+logBug('info','Ready - '+entities.length+' entities, '+insts.length+' institutions, '+accts.length+' accounts loaded');
+</script>
+</body>
+</html>
