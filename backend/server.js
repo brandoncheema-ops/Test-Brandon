@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -9,9 +10,13 @@ const errorHandler = require('./middleware/errorHandler');
 const app = express();
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? false : undefined
+}));
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: process.env.NODE_ENV === 'production'
+    ? [process.env.FRONTEND_URL, 'https://nf6-property-management.onrender.com'].filter(Boolean)
+    : 'http://localhost:3000',
   credentials: true
 }));
 
@@ -244,6 +249,15 @@ app.put('/api/invoices/:id', protect, authorize('owner', 'manager'), (req, res) 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', mode: 'in-memory', timestamp: new Date().toISOString() });
 });
+
+// Serve React frontend in production
+if (process.env.NODE_ENV === 'production') {
+  const frontendBuild = path.join(__dirname, '..', 'frontend', 'build');
+  app.use(express.static(frontendBuild));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendBuild, 'index.html'));
+  });
+}
 
 // Error handler
 app.use(errorHandler);
