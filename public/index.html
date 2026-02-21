@@ -165,8 +165,7 @@ select.filter-select{padding:8px 12px;border:1px solid var(--tiller-border);bord
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
       <span class="label">Connect Account</span>
     </button>
-    <div class="avatar" id="userAvatar" title="Signed in">MN</div>
-    <button onclick="handleLogout()" style="background:none;border:1px solid var(--tiller-border);padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;color:var(--tiller-text2);transition:.2s;font-family:inherit" onmouseover="this.style.background='var(--tiller-hover)'" onmouseout="this.style.background='none'">Sign Out</button>
+    <div class="avatar">MN</div>
   </div>
 </nav>
 
@@ -529,7 +528,23 @@ function renderTx(){
   const el=document.getElementById('txContent');
   if(plaidConnected.length===0){
     el.innerHTML=`<div class="card"><div class="card-body" style="text-align:center;padding:60px"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--tiller-text3)" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg><h3 style="margin-top:16px;color:var(--tiller-text2)">No accounts connected</h3><p style="color:var(--tiller-text3);margin:8px 0 20px">Connect a bank account via Plaid to see live transactions</p><button class="plaid-btn primary" style="width:auto;display:inline-flex;padding:10px 24px" onclick="openPlaid()">Connect Account</button></div></div>`;
-  } else {
+    return;
+  }
+  
+  el.innerHTML=`<div class="card"><div class="card-body" style="text-align:center;padding:40px"><p style="color:var(--tiller-text3)">Loading transactions...</p></div></div>`;
+  
+  try {
+    const res = await fetch('/api/plaid/transactions', { credentials: 'include' });
+    const data = await res.json();
+    
+    if (data.transactions && data.transactions.length > 0) {
+      el.innerHTML=`<div class="card"><div class="card-header"><h3>Transactions</h3><span class="badge badge-green">${data.transactions.length} transactions</span></div><div class="card-body" style="padding:0"><table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Account</th><th class="text-right">Amount</th></tr></thead><tbody>${data.transactions.map(t=>`<tr><td class="mono">${t.date}</td><td class="fw600">${t.merchantName||t.name}</td><td><span class="badge badge-${t.amount<0?'green':'red'}">${t.category}</span></td><td class="muted">${t.institution} - ${t.accountName}</td><td class="text-right fw600 ${t.amount<0?'green':'red'}">${t.amount<0?'+':''}${$(Math.abs(t.amount))}</td></tr>`).join('')}</tbody></table></div></div>`;
+    } else {
+      // Show demo data if no real transactions yet
+      el.innerHTML=`<div class="card"><div class="card-header"><h3>Connected Transactions</h3><span class="badge badge-green">${plaidConnected.length} linked</span></div><div class="card-body" style="padding:0"><table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Account</th><th class="text-right">Amount</th></tr></thead><tbody>${generateDemoTx()}</tbody></table></div></div>`;
+    }
+  } catch(e) {
+    // Fallback to demo transactions on error
     el.innerHTML=`<div class="card"><div class="card-header"><h3>Connected Transactions</h3><span class="badge badge-green">${plaidConnected.length} linked</span></div><div class="card-body" style="padding:0"><table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Account</th><th class="text-right">Amount</th></tr></thead><tbody>${generateDemoTx()}</tbody></table></div></div>`;
   }
 }
@@ -558,8 +573,7 @@ function launchPlaidLink(){
   const st=document.getElementById('plaidStatus');
   st.className='plaid-status info';st.style.display='block';st.textContent='Requesting link token from server...';
   logBug('info','Plaid Link: requesting link token');
-
-  fetch('/api/create-link-token',{method:'POST',headers:{'Content-Type':'application/json'}})
+  fetch('/api/create-link-token',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include'})
   .then(r=>r.json())
   .then(data=>{
     logBug('info','Link token received: '+data.link_token.substring(0,20)+'...');
@@ -572,10 +586,31 @@ function launchPlaidLink(){
     const handler=Plaid.create({token:data.link_token,
       onSuccess:(public_token,metadata)=>{
         logBug('info','Plaid success: '+metadata.institution.name);
-        st.className='plaid-status success';st.textContent='Connected: '+metadata.institution.name;
-        plaidConnected.push({name:metadata.institution.name,id:metadata.institution.institution_id,accounts:metadata.accounts});
-        renderPlaidAccounts();
-        fetch('/api/exchange-token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({public_token})});
+        st.className='plaid-status info';st.textContent='Exchanging token...';
+        fetch('/api/exchange-token',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({public_token})})
+        .then(r=>r.json())
+        .then(exData=>{
+          if(exData.success||exData.accounts){
+            st.className='plaid-status success';
+            const accts=exData.accounts||metadata.accounts;
+            st.textContent='Connected: '+(exData.institution||metadata.institution.name)+' ('+accts.length+' accounts)';
+            plaidConnected.push({
+              name:exData.institution||metadata.institution.name,
+              id:metadata.institution.institution_id,
+              itemId:exData.itemId,
+              accounts:accts.map(a=>({name:a.name,mask:a.mask,type:a.type||a.subtype}))
+            });
+            renderPlaidAccounts();
+            renderTx();
+            logBug('info','Token exchanged successfully');
+          } else {
+            st.className='plaid-status error';st.textContent='Exchange failed: '+(exData.error||'Unknown error');
+          }
+        })
+        .catch(err=>{
+          logBug('error','Token exchange failed: '+err);
+          st.className='plaid-status error';st.textContent='Exchange error: '+err.message;
+        });
       },
       onExit:(err)=>{if(err){logBug('error','Plaid exit error: '+JSON.stringify(err));st.className='plaid-status error';st.textContent='Error: '+err.display_message}},
       onEvent:(name)=>{logBug('info','Plaid event: '+name)}
@@ -584,7 +619,6 @@ function launchPlaidLink(){
   })
   .catch(err=>{logBug('error','Link token fetch failed: '+err);st.className='plaid-status error';st.textContent='Server error. Using sandbox demo instead.';setTimeout(()=>launchPlaidSandbox(),1500)});
 }
-
 function launchPlaidSandbox(){
   const st=document.getElementById('plaidStatus');
   logBug('info','Plaid sandbox demo activated');
@@ -609,39 +643,6 @@ function renderPlaidAccounts(){
 // =================================
 renderDash();
 logBug('info','Ready - '+entities.length+' entities, '+insts.length+' institutions, '+accts.length+' accounts loaded');
-
-// AUTH: Session check & Logout
-// =================================
-async function handleLogout() {
-  try {
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-  } catch(e) {}
-  window.location.href = '/login';
-}
-
-// Load user info into avatar
-async function loadUserSession() {
-  try {
-    const res = await fetch('/api/auth/status', { credentials: 'include' });
-    const data = await res.json();
-    if (data.authenticated && data.user) {
-      const initials = data.user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2);
-      const av = document.getElementById('userAvatar');
-      if (av) { av.textContent = initials; av.title = data.user.email; }
-    }
-  } catch(e) {}
-}
-
-// Periodically check session validity (every 5 min)
-setInterval(async () => {
-  try {
-    const res = await fetch('/api/auth/status', { credentials: 'include' });
-    const data = await res.json();
-    if (!data.authenticated) window.location.href = '/login';
-  } catch(e) {}
-}, 5 * 60 * 1000);
-
-// =================================
 </script>
 </body>
 </html>
