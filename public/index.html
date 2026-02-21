@@ -165,7 +165,8 @@ select.filter-select{padding:8px 12px;border:1px solid var(--tiller-border);bord
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
       <span class="label">Connect Account</span>
     </button>
-    <div class="avatar">MN</div>
+    <div class="avatar" id="userAvatar" title="Signed in">MN</div>
+    <button onclick="handleLogout()" style="background:none;border:1px solid var(--tiller-border);padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;color:var(--tiller-text2);transition:.2s;font-family:inherit" onmouseover="this.style.background='var(--tiller-hover)'" onmouseout="this.style.background='none'">Sign Out</button>
   </div>
 </nav>
 
@@ -608,6 +609,39 @@ function renderPlaidAccounts(){
 // =================================
 renderDash();
 logBug('info','Ready - '+entities.length+' entities, '+insts.length+' institutions, '+accts.length+' accounts loaded');
+
+// AUTH: Session check & Logout
+// =================================
+async function handleLogout() {
+  try {
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+  } catch(e) {}
+  window.location.href = '/login';
+}
+
+// Load user info into avatar
+async function loadUserSession() {
+  try {
+    const res = await fetch('/api/auth/status', { credentials: 'include' });
+    const data = await res.json();
+    if (data.authenticated && data.user) {
+      const initials = data.user.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2);
+      const av = document.getElementById('userAvatar');
+      if (av) { av.textContent = initials; av.title = data.user.email; }
+    }
+  } catch(e) {}
+}
+
+// Periodically check session validity (every 5 min)
+setInterval(async () => {
+  try {
+    const res = await fetch('/api/auth/status', { credentials: 'include' });
+    const data = await res.json();
+    if (!data.authenticated) window.location.href = '/login';
+  } catch(e) {}
+}, 5 * 60 * 1000);
+
+// =================================
 </script>
 </body>
 </html>
