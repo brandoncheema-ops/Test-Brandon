@@ -9,7 +9,7 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --tiller-green:#0D8043;--tiller-green-light:#E6F4EA;--tiller-green-dark:#0A6B37;
+  --tiller-green:#0D8043;--tiller-green-light:#E6F4A;--tiller-green-dark:#0A6B37;
   --tiller-blue:#1A73E8;--tiller-red:#D93025;--tiller-orange:#F29900;
   --tiller-bg:#F8F9FA;--tiller-white:#FFFFFF;--tiller-border:#DADCE0;
   --tiller-text:#202124;--tiller-text2:#5F6368;--tiller-text3:#80868B;
@@ -524,7 +524,7 @@ function renderInv(){
 // =================================
 // TRANSACTIONS (Plaid-powered)
 // =================================
-function renderTx(){
+async function renderTx(){
   const el=document.getElementById('txContent');
   if(plaidConnected.length===0){
     el.innerHTML=`<div class="card"><div class="card-body" style="text-align:center;padding:60px"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--tiller-text3)" stroke-width="1.5"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg><h3 style="margin-top:16px;color:var(--tiller-text2)">No accounts connected</h3><p style="color:var(--tiller-text3);margin:8px 0 20px">Connect a bank account via Plaid to see live transactions</p><button class="plaid-btn primary" style="width:auto;display:inline-flex;padding:10px 24px" onclick="openPlaid()">Connect Account</button></div></div>`;
