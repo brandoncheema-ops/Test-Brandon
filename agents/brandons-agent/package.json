@@ -1,0 +1,14 @@
+{
+  "name": "brandons-agent",
+  "version": "1.0.0",
+  "description": "Brandon's Agent - NF6 Family Office automation agent with Telegram integration",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/telegram.js",
+    "agent": "node src/index.js"
+  },
+  "dependencies": {
+    "telegraf": "^4.16.3",
+    "dotenv": "^16.4.7"
+  }
+}

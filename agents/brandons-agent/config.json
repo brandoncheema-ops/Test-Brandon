@@ -10,8 +10,22 @@
     "booking-automation",
     "financial-calculations",
     "data-retrieval",
-    "report-generation"
+    "report-generation",
+    "telegram-bot"
   ],
+  "telegram": {
+    "botName": "Open Claw",
+    "entrypoint": "src/telegram.js",
+    "commands": [
+      "/start - Welcome message",
+      "/help - Show all commands",
+      "/bookings - View current bookings",
+      "/revenue - YTD financial summary",
+      "/calculate <nights> <rate> - Calculate net income",
+      "/properties - Property details",
+      "/status - Agent status"
+    ]
+  },
   "knowledge": {
     "directory": "./knowledge",
     "description": "LLM knowledge base - domain-specific context, instructions, and reference data that the agent uses for informed decision-making."
@@ -22,5 +36,5 @@
     "temperature": 0.7
   },
   "createdAt": "2026-02-20",
-  "updatedAt": "2026-02-20"
+  "updatedAt": "2026-02-22"
 }
