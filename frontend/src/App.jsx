@@ -11,6 +11,7 @@ import BookingsPage from './pages/BookingsPage';
 import PropertiesPage from './pages/PropertiesPage';
 import CalendarPage from './pages/CalendarPage';
 import InvoicesPage from './pages/InvoicesPage';
+import WeekendCoveragePage from './pages/WeekendCoveragePage';
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -35,6 +36,7 @@ function AppRoutes() {
         <Route path="properties" element={<PropertiesPage />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="invoices" element={<InvoicesPage />} />
+        <Route path="weekend-coverage" element={<WeekendCoveragePage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>

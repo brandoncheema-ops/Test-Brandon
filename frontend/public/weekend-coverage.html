@@ -3,88 +3,307 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Weekend Coverage - Submit</title>
+  <title>Weekend Coverage - NF6 Family Office</title>
   <style>
+    :root {
+      --primary: #1a5f4a;
+      --primary-dark: #0d3a2a;
+      --primary-light: #2d7a5e;
+      --accent: #c3a54e;
+      --bg-light: #f5f7fa;
+      --text-primary: #1a1a2e;
+      --text-secondary: #555;
+      --text-muted: #999;
+      --border: #e0e0e0;
+      --success: #2d7a5e;
+      --danger: #d84040;
+      --white: #ffffff;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+      --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+      --shadow-lg: 0 10px 40px rgba(0,0,0,0.12);
+      --radius: 8px;
+      --radius-lg: 12px;
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Calibri, Arial, sans-serif; background: #f4f7f5; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-    .card { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 500px; width: 100%; overflow: hidden; }
-    .header { background: linear-gradient(135deg, #1a5f4a, #0d3a2a); padding: 24px; text-align: center; color: white; }
-    .header h1 { font-size: 20px; font-weight: 600; }
-    .header p { font-size: 13px; opacity: 0.8; margin-top: 4px; }
-    .body { padding: 24px; }
-    .date-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 14px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb; }
-    .date-label { font-weight: 600; color: #1a5f4a; min-width: 50px; font-size: 18px; }
-    .date-day { font-size: 12px; color: #888; min-width: 30px; }
-    .date-row input { flex: 1; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 15px; outline: none; }
-    .date-row input:focus { border-color: #1a5f4a; box-shadow: 0 0 0 2px rgba(26,95,74,0.15); }
-    .btn { display: block; width: 100%; padding: 14px; background: #1a5f4a; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 8px; }
-    .btn:hover { background: #155a43; }
-    .btn:disabled { background: #94a3b8; cursor: not-allowed; }
-    .status { text-align: center; margin-top: 16px; padding: 12px; border-radius: 8px; display: none; }
-    .status.success { display: block; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
-    .status.error { display: block; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
-    .loading { display: none; text-align: center; padding: 40px; }
-    .loading.show { display: block; }
-    .spinner { border: 3px solid #e5e7eb; border-top: 3px solid #1a5f4a; border-radius: 50%; width: 30px; height: 30px; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ee 100%);
+      color: var(--text-primary);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Header */
+    .top-bar {
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+      padding: 20px 24px;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .top-bar-logo { font-size: 18px; font-weight: 700; letter-spacing: 1.5px; display: flex; align-items: center; gap: 8px; }
+    .top-bar-sub { font-size: 12px; opacity: 0.7; }
+
+    /* Main Container */
+    .container { max-width: 700px; margin: 0 auto; padding: 24px 16px; }
+
+    /* Card */
+    .card {
+      background: white;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .card-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card-title { font-size: 16px; font-weight: 600; }
+    .card-body { padding: 24px; }
+
+    /* Weekend Header */
+    .weekend-header {
+      text-align: center;
+      padding: 28px 24px;
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+      color: white;
+    }
+    .weekend-header h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .weekend-header p { font-size: 14px; opacity: 0.8; }
+    .weekend-dates { font-size: 28px; font-weight: 700; margin-top: 8px; letter-spacing: 1px; }
+
+    /* Entry Row */
+    .entry-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 24px;
+      border-bottom: 1px solid #f0f0f0;
+      transition: background 0.15s;
+    }
+    .entry-row:last-child { border-bottom: none; }
+    .entry-row:hover { background: #fafbfc; }
+
+    .date-badge {
+      background: var(--bg-light);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 16px;
+      text-align: center;
+      min-width: 70px;
+    }
+    .date-badge .date-num { font-size: 20px; font-weight: 700; color: var(--primary); }
+    .date-badge .date-day { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); }
+
+    .entry-input-wrap { flex: 1; }
+    .entry-input-wrap label { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 4px; }
+
+    .form-input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 15px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(26, 95, 74, 0.1);
+    }
+    .form-input.filled {
+      border-color: var(--success);
+      background: #f0faf5;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+    .btn-block { width: 100%; }
+    .btn-lg { padding: 14px 28px; font-size: 16px; }
+
+    /* Status */
+    .status-msg {
+      text-align: center;
+      padding: 16px;
+      border-radius: var(--radius);
+      margin-top: 16px;
+      font-weight: 600;
+      display: none;
+    }
+    .status-msg.success { display: block; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+    .status-msg.error { display: block; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+
+    /* Badge */
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-pending { background: #fff3e0; color: #ef6c00; }
+    .badge-complete { background: #e8f5e9; color: #2e7d32; }
+
+    /* Loading */
+    .loading { text-align: center; padding: 40px; }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 12px;
+    }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Success screen */
+    .success-screen { text-align: center; padding: 48px 24px; }
+    .success-icon {
+      width: 64px; height: 64px;
+      background: #ecfdf5;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 32px;
+    }
+    .success-screen h2 { color: var(--success); margin-bottom: 8px; }
+    .success-screen p { color: var(--text-secondary); font-size: 14px; }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-muted);
+      font-size: 12px;
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      .container { padding: 16px 12px; }
+      .entry-row { flex-direction: column; align-items: stretch; gap: 10px; }
+      .date-badge { display: flex; align-items: center; gap: 8px; text-align: left; }
+      .weekend-dates { font-size: 22px; }
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="header">
-      <h1>Weekend Coverage</h1>
-      <p id="weekend-label">Loading...</p>
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div>
+      <div class="top-bar-logo">&#9889; NF6</div>
+      <div class="top-bar-sub">Family Office</div>
+    </div>
+    <div class="top-bar-sub">Weekend Coverage</div>
+  </div>
+
+  <div class="container">
+    <!-- Loading State -->
+    <div id="loading-state" class="card">
+      <div class="loading">
+        <div class="spinner"></div>
+        <p>Loading weekend schedule...</p>
+      </div>
     </div>
 
-    <div class="loading show" id="loading">
-      <div class="spinner"></div>
-      <p>Loading weekend dates...</p>
+    <!-- Form State -->
+    <div id="form-state" style="display:none;">
+      <!-- Weekend Card -->
+      <div class="card">
+        <div class="weekend-header">
+          <h1>Weekend Coverage</h1>
+          <p>Submit who worked this weekend</p>
+          <div class="weekend-dates" id="weekend-dates-label">--</div>
+        </div>
+        <div id="entries-container"></div>
+        <div class="card-body">
+          <button class="btn btn-primary btn-block btn-lg" id="submit-btn" onclick="submitCoverage()">
+            Submit Coverage
+          </button>
+          <div class="status-msg" id="status-msg"></div>
+        </div>
+      </div>
     </div>
 
-    <div class="body" id="form-body" style="display:none;">
-      <div id="entries"></div>
-      <button class="btn" id="submit-btn" onclick="submitCoverage()">Submit Coverage</button>
-      <div class="status" id="status"></div>
+    <!-- Success State -->
+    <div id="success-state" style="display:none;">
+      <div class="card">
+        <div class="success-screen">
+          <div class="success-icon">&#10003;</div>
+          <h2>Coverage Submitted</h2>
+          <p id="success-summary">Your entries have been saved.</p>
+          <p style="margin-top: 16px; font-size: 13px; color: var(--text-muted);">You can close this page.</p>
+        </div>
+      </div>
     </div>
+
+    <div class="footer">&copy; 2026 NF6 Family Office</div>
   </div>
 
   <script>
     const API_BASE = window.location.origin;
     const API_KEY = 'nf6-schedule-key';
+    const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     let scheduleEntries = [];
 
-    async function loadWeekend() {
+    async function init() {
       try {
-        const res = await fetch(`${API_BASE}/api/weekend-schedule/email-body?apiKey=${API_KEY}&format=json`);
-        // Use the schedule list endpoint instead
-        const schedRes = await fetch(`${API_BASE}/api/weekend-schedule?apiKey=${API_KEY}`);
-
-        // Get last weekend dates to show in header
+        // Calculate last weekend
         const now = new Date();
         const day = now.getDay();
         const lastSun = new Date(now);
         lastSun.setDate(now.getDate() - day);
+        lastSun.setHours(23, 59, 59, 999);
         const lastSat = new Date(lastSun);
         lastSat.setDate(lastSun.getDate() - 1);
+        lastSat.setHours(0, 0, 0, 0);
 
         const satStr = `${lastSat.getMonth() + 1}/${lastSat.getDate()}`;
         const sunStr = `${lastSun.getMonth() + 1}/${lastSun.getDate()}`;
-        document.getElementById('weekend-label').textContent = `Weekend of ${satStr} - ${sunStr}`;
+        document.getElementById('weekend-dates-label').textContent = `${satStr} - ${sunStr}`;
 
-        // If there are entries from the API, use them
-        // Otherwise create blank entries for Sat + Sun
-        if (schedRes.ok) {
-          const all = await schedRes.json();
-          // Filter to last weekend
-          const satISO = lastSat.toISOString().slice(0, 10);
-          const sunISO = lastSun.toISOString().slice(0, 10);
-          scheduleEntries = all.filter(e => {
-            const d = e.date.slice(0, 10);
-            return d === satISO || d === sunISO;
+        // Try to load existing entries from API
+        try {
+          const res = await fetch(`${API_BASE}/api/weekend-schedule?startDate=${lastSat.toISOString()}&endDate=${lastSun.toISOString()}`, {
+            headers: { 'x-api-key': API_KEY }
           });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.length > 0) {
+              scheduleEntries = data;
+            }
+          }
+        } catch {
+          // API might need JWT, fall through to create blank entries
         }
 
-        // If no entries exist yet, show Sat/Sun with blank fields
+        // If no entries from API, create blank ones for Sat + Sun
         if (scheduleEntries.length === 0) {
           scheduleEntries = [
             { _id: null, date: lastSat.toISOString(), doctorName: '' },
@@ -93,51 +312,66 @@
         }
 
         renderEntries();
+        document.getElementById('loading-state').style.display = 'none';
+        document.getElementById('form-state').style.display = 'block';
       } catch (err) {
-        document.getElementById('loading').innerHTML = '<p style="color:#991b1b;">Could not load schedule. Make sure the server is running.</p>';
+        document.getElementById('loading-state').innerHTML =
+          '<div class="card-body" style="text-align:center;color:#991b1b;">Could not load schedule. Make sure the server is running.</div>';
       }
     }
 
     function renderEntries() {
-      const container = document.getElementById('entries');
-      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const container = document.getElementById('entries-container');
       container.innerHTML = scheduleEntries.map((e, i) => {
         const d = new Date(e.date);
         const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
-        const dayName = days[d.getDay()];
+        const dayName = DAYS[d.getDay()];
+        const filled = e.doctorName ? 'filled' : '';
         return `
-          <div class="date-row">
-            <span class="date-label">${dateStr}</span>
-            <span class="date-day">${dayName}</span>
-            <input type="text" id="doctor-${i}" placeholder="Doctor name..." value="${e.doctorName || ''}">
+          <div class="entry-row">
+            <div class="date-badge">
+              <div class="date-num">${dateStr}</div>
+              <div class="date-day">${dayName}</div>
+            </div>
+            <div class="entry-input-wrap">
+              <label>Doctor on call</label>
+              <input
+                type="text"
+                class="form-input ${filled}"
+                id="doctor-${i}"
+                placeholder="Enter doctor name..."
+                value="${e.doctorName || ''}"
+                oninput="checkInputs()"
+              >
+            </div>
           </div>
         `;
       }).join('');
+    }
 
-      document.getElementById('loading').classList.remove('show');
-      document.getElementById('form-body').style.display = 'block';
+    function checkInputs() {
+      const allFilled = scheduleEntries.every((_, i) =>
+        document.getElementById(`doctor-${i}`).value.trim()
+      );
+      document.getElementById('submit-btn').disabled = !allFilled;
     }
 
     async function submitCoverage() {
       const btn = document.getElementById('submit-btn');
-      const status = document.getElementById('status');
+      const statusEl = document.getElementById('status-msg');
       btn.disabled = true;
       btn.textContent = 'Submitting...';
-      status.className = 'status';
-      status.style.display = 'none';
+      statusEl.className = 'status-msg';
 
       try {
-        // Build the submission
         const updates = scheduleEntries.map((e, i) => ({
           id: e._id,
           date: e.date,
           doctorName: document.getElementById(`doctor-${i}`).value.trim()
         }));
 
-        // If entries already exist (have IDs), update them
+        // If entries have IDs, update them
         const existing = updates.filter(u => u.id);
-        const newEntries = updates.filter(u => !u.id);
-
         if (existing.length > 0) {
           await fetch(`${API_BASE}/api/weekend-schedule/submit?apiKey=${API_KEY}`, {
             method: 'PUT',
@@ -146,11 +380,10 @@
           });
         }
 
-        // If entries don't exist yet, create them with names
+        // If entries are new (no ID), try to create via bulk
+        const newEntries = updates.filter(u => !u.id);
         if (newEntries.length > 0) {
-          // Need JWT for create — use API key submit endpoint workaround
-          // Create via bulk with names included
-          const token = localStorage.getItem('token');
+          const token = localStorage.getItem('nf6_token');
           if (token) {
             await fetch(`${API_BASE}/api/weekend-schedule/bulk`, {
               method: 'POST',
@@ -160,18 +393,24 @@
           }
         }
 
-        status.className = 'status success';
-        status.textContent = 'Coverage submitted! You can close this page.';
-        btn.textContent = 'Submitted';
+        // Show success
+        const summaryText = updates.map(u => {
+          const d = new Date(u.date);
+          return `${d.getMonth() + 1}/${d.getDate()} - ${u.doctorName}`;
+        }).join(', ');
+
+        document.getElementById('success-summary').textContent = summaryText;
+        document.getElementById('form-state').style.display = 'none';
+        document.getElementById('success-state').style.display = 'block';
       } catch (err) {
-        status.className = 'status error';
-        status.textContent = 'Error submitting. Please try again.';
+        statusEl.className = 'status-msg error';
+        statusEl.textContent = 'Error submitting. Please try again.';
         btn.disabled = false;
         btn.textContent = 'Submit Coverage';
       }
     }
 
-    loadWeekend();
+    init();
   </script>
 </body>
 </html>

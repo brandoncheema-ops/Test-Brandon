@@ -3,7 +3,7 @@ import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   FiHome, FiCalendar, FiFileText, FiGrid,
-  FiLogOut, FiMenu, FiX, FiMapPin
+  FiLogOut, FiMenu, FiX, FiMapPin, FiClipboard
 } from 'react-icons/fi';
 
 const navItems = [
@@ -12,6 +12,7 @@ const navItems = [
   { path: '/properties', icon: FiMapPin, label: 'Properties' },
   { path: '/calendar', icon: FiCalendar, label: 'Calendar' },
   { path: '/invoices', icon: FiGrid, label: 'Invoices' },
+  { path: '/weekend-coverage', icon: FiClipboard, label: 'Weekend Coverage' },
 ];
 
 export default function AppLayout() {
