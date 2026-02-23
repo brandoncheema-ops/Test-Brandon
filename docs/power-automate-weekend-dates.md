@@ -1,168 +1,173 @@
-# Adding Dates to the Weekend Coverage Email in Power Automate
+# Weekend Coverage — Power Automate Email Setup
 
-## The Problem
+## Overview
 
-The current Power Automate flow sends an email saying who worked the weekend **without dates**.
-Dr. Volsky wants the email to include the **specific dates**, like:
-> "2/21 - Dr. Yurka, 2/22 - Dr. Yurka"
+Every Monday, Power Automate sends an email with:
+- Last weekend's **dates** (Saturday + Sunday)
+- A **link** to a form where the doctor names get filled in
 
-**Key requirement:** Doctor names are NOT known ahead of time. Volsky fills them in **after** the weekend ends.
-
-## How It Works Now
-
-1. Power Automate sends an email on Monday with the **weekend dates** and a **link**
-2. Volsky clicks the link, fills in who worked each day
-3. The schedule is saved with names + dates
+Doctor names are **never hardcoded** — the form is free-fill. Any doctor can be entered for any day.
 
 ---
 
-## Approach 1: Modify the Existing Power Automate Flow (No API Needed)
+## How to Set Up the Weekly Email in Power Automate (Step by Step)
 
-### Step-by-Step in Power Automate
+### Step 1: Create a New Flow
 
-#### 1. Open Your Flow
-- Go to [https://make.powerautomate.com](https://make.powerautomate.com)
-- Find your weekend coverage flow → **Edit**
+1. Go to [https://make.powerautomate.com](https://make.powerautomate.com)
+2. Click **+ Create** → **Automated cloud flow**
+3. Name it: `Weekly Weekend Coverage Email`
+4. Skip the trigger selection → click **Create**
 
-#### 2. Add Date Variables
-After the trigger (Recurrence), add two **"Initialize variable"** actions:
+### Step 2: Add the Recurrence Trigger
 
-**Saturday's Date:**
-- Name: `SaturdayDate`
-- Type: String
-- Value (expression):
-  ```
-  formatDateTime(addDays(utcNow(), sub(0, sub(dayOfWeek(utcNow()), 6))), 'M/d')
-  ```
+1. Click **+ Add a trigger** → search **Recurrence**
+2. Set:
+   - **Interval:** `1`
+   - **Frequency:** `Week`
+   - **On these days:** `Monday`
+   - **At these hours:** `8` (or whenever you want the email sent)
+   - **Time zone:** your time zone (e.g., Eastern)
 
-**Sunday's Date:**
-- Name: `SundayDate`
-- Type: String
-- Value (expression):
-  ```
-  formatDateTime(addDays(utcNow(), sub(0, sub(dayOfWeek(utcNow()), 0))), 'M/d')
-  ```
+### Step 3: Add "Initialize Variable" — Saturday Date
 
-#### 3. Update the Email Body
-In **"Send an email (V2)"**, set **Is HTML** to **Yes** and use this body:
+1. Click **+ New step** → search **Initialize variable**
+2. Set:
+   - **Name:** `SaturdayDate`
+   - **Type:** String
+   - **Value:** click in the box → **Expression** tab → paste:
+     ```
+     formatDateTime(addDays(utcNow(), sub(0, add(dayOfWeek(utcNow()), 1))), 'M/d')
+     ```
+   - Click **OK**
+
+### Step 4: Add "Initialize Variable" — Sunday Date
+
+1. Click **+ New step** → **Initialize variable**
+2. Set:
+   - **Name:** `SundayDate`
+   - **Type:** String
+   - **Value:** expression:
+     ```
+     formatDateTime(addDays(utcNow(), sub(0, dayOfWeek(utcNow()))), 'M/d')
+     ```
+
+### Step 5: Add "Send an Email (V2)" — Outlook
+
+1. Click **+ New step** → search **Send an email (V2)** (Office 365 Outlook)
+2. Set:
+   - **To:** the recipient email (Volsky or a distribution list)
+   - **Subject:**
+     ```
+     Weekend Coverage: @{variables('SaturdayDate')} - @{variables('SundayDate')}
+     ```
+   - **Body:** (click the `</>` code view icon to paste HTML)
 
 ```html
-<h3>Weekend Coverage</h3>
-<p><strong>@{variables('SaturdayDate')} - @{variables('SundayDate')}</strong></p>
-<table border="1" cellpadding="8">
-  <tr><th>Date</th><th>Doctor</th></tr>
-  <tr><td>@{variables('SaturdayDate')}</td><td>— pending —</td></tr>
-  <tr><td>@{variables('SundayDate')}</td><td>— pending —</td></tr>
-</table>
-<br>
-<a href="https://your-site.com/weekend-coverage.html">Click here to submit who worked</a>
+<div style="font-family: Segoe UI, Calibri, Arial, sans-serif; max-width: 600px;">
+  <div style="background: linear-gradient(135deg, #0d3a2a, #1a5f4a); padding: 24px; text-align: center; border-radius: 8px 8px 0 0;">
+    <h2 style="color: white; margin: 0;">Weekend Coverage</h2>
+    <p style="color: #b8d4cc; margin: 4px 0 0;">@{variables('SaturdayDate')} - @{variables('SundayDate')}</p>
+  </div>
+  <div style="background: #f9f9f9; padding: 24px; border: 1px solid #e0e0e0; border-top: none;">
+    <table style="width: 100%; border-collapse: collapse;">
+      <tr style="background: #1a5f4a; color: white;">
+        <th style="padding: 10px 14px; text-align: left;">Date</th>
+        <th style="padding: 10px 14px; text-align: left;">Doctor On Call</th>
+      </tr>
+      <tr style="background: white;">
+        <td style="padding: 10px 14px; border-bottom: 1px solid #ddd; font-weight: bold;">@{variables('SaturdayDate')}</td>
+        <td style="padding: 10px 14px; border-bottom: 1px solid #ddd; color: #999; font-style: italic;">— pending —</td>
+      </tr>
+      <tr style="background: #f0f7f4;">
+        <td style="padding: 10px 14px; border-bottom: 1px solid #ddd; font-weight: bold;">@{variables('SundayDate')}</td>
+        <td style="padding: 10px 14px; border-bottom: 1px solid #ddd; color: #999; font-style: italic;">— pending —</td>
+      </tr>
+    </table>
+    <p style="text-align: center; margin-top: 20px;">
+      <a href="https://YOUR-SITE.com/weekend-coverage.html"
+         style="display: inline-block; background: #1a5f4a; color: white; padding: 12px 28px;
+                text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px;">
+        Submit Weekend Coverage
+      </a>
+    </p>
+    <p style="text-align: center; font-size: 12px; color: #999; margin-top: 8px;">
+      Click the button to fill in who worked each day
+    </p>
+  </div>
+</div>
 ```
 
-#### 4. Save and Test
-- Click **Save** → **Test** → **Manually** → **Run flow**
+3. **Important:** Toggle **Is HTML** to **Yes**
+4. Replace `https://YOUR-SITE.com` with your actual site URL (e.g., `https://nf6-property-management.onrender.com`)
+
+### Step 6: Save and Test
+
+1. Click **Save** (top right)
+2. Click **Test** → **Manually** → **Run flow**
+3. Check the recipient's inbox — you should see the email with dates and the green button
 
 ---
 
-## Approach 2: Use the NF6 API + HTML Form (Recommended)
-
-This approach uses the API to auto-generate the email with dates and includes a clickable link for Volsky.
-
-### Flow Overview
+## What the Email Looks Like
 
 ```
-Monday morning (Recurrence trigger)
-  → HTTP GET: /api/weekend-schedule/email-body (gets dates + form link)
-  → Send email (V2): paste the HTML body
-  → Volsky clicks link in email
-  → Fills in doctor names on the form
-  → Done
+Subject: Weekend Coverage: 2/22 - 2/23
+
+┌──────────────────────────────┐
+│     Weekend Coverage         │
+│       2/22 - 2/23            │
+├──────────────────────────────┤
+│ Date   │ Doctor On Call      │
+│ 2/22   │ — pending —         │
+│ 2/23   │ — pending —         │
+├──────────────────────────────┤
+│   [ Submit Weekend Coverage ] │
+│   Click to fill in who worked │
+└──────────────────────────────┘
 ```
 
-### Step 1: Create Weekend Date Entries (Friday)
+## What Happens When They Click the Link
 
-POST the upcoming weekend dates (no doctor names needed):
-
-```http
-POST /api/weekend-schedule/bulk
-Authorization: Bearer <your-jwt-token>
-Content-Type: application/json
-
-{
-  "entries": [
-    { "date": "2026-02-28" },
-    { "date": "2026-03-01" }
-  ]
-}
-```
-
-### Step 2: Power Automate — HTTP Action
-
-Add an **HTTP** action:
-- **Method:** GET
-- **URI:** `https://your-server.com/api/weekend-schedule/email-body?apiKey=nf6-schedule-key&format=html`
-
-The response is a full HTML email with:
-- Weekend dates in a table
-- A green **"Submit Weekend Coverage"** button/link
-
-### Step 3: Send the Email
-
-In **"Send an email (V2)"**:
-- **To:** Dr. Volsky's email
-- **Subject:** `Weekend Coverage`
-- **Body:** `@{body('HTTP')}`
-- **Is HTML:** Yes
-
-### Step 4: Volsky Clicks the Link
-
-The email contains a button that opens `weekend-coverage.html`:
-- Shows Saturday and Sunday dates
-- Has text fields next to each date
-- Volsky types the doctor names and clicks **Submit**
-
-### API Endpoints Reference
-
-| Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
-| `/api/weekend-schedule` | GET | JWT | List all schedule entries |
-| `/api/weekend-schedule/last-weekend` | GET | JWT | Get last weekend summary + form URL |
-| `/api/weekend-schedule/email-body` | GET | API Key | HTML email body for Power Automate |
-| `/api/weekend-schedule` | POST | JWT | Add a single date entry |
-| `/api/weekend-schedule/bulk` | POST | JWT | Add multiple date entries at once |
-| `/api/weekend-schedule/:id` | PUT | JWT | Update entry (fill in doctor name) |
-| `/api/weekend-schedule/submit` | PUT | API Key | Submit doctor names from the HTML form |
-| `/api/weekend-schedule/:id` | DELETE | JWT | Remove a schedule entry |
+1. The form opens at `weekend-coverage.html`
+2. Shows Saturday and Sunday with blank text fields
+3. They type any doctor name (free-fill, no dropdown — any name works)
+4. Click **Submit Coverage**
+5. Success screen shows: `2/22 - Dr. Smith, 2/23 - Dr. Jones`
 
 ---
 
-## Quick Reference: Power Automate Date Expressions
+## Quick Setup Checklist
 
-| Expression | Result | Description |
-|-----------|--------|-------------|
-| `formatDateTime(utcNow(), 'M/d')` | `2/23` | Today's date |
-| `formatDateTime(addDays(utcNow(), -1), 'M/d')` | `2/22` | Yesterday |
-| `dayOfWeek(utcNow())` | `0-6` | 0=Sunday, 6=Saturday |
-| `formatDateTime(utcNow(), 'yyyy-MM-dd')` | `2026-02-23` | ISO date format |
+- [ ] Create flow at make.powerautomate.com
+- [ ] Add **Recurrence** trigger: weekly on Monday at 8 AM
+- [ ] Add **Initialize variable**: `SaturdayDate` (expression above)
+- [ ] Add **Initialize variable**: `SundayDate` (expression above)
+- [ ] Add **Send an email (V2)**: paste the HTML body above
+- [ ] Replace `YOUR-SITE.com` with your real URL
+- [ ] Toggle **Is HTML** to Yes
+- [ ] **Save** and **Test**
 
 ---
 
-## Email Output Example
+## Power Automate Date Expressions Reference
 
-**Before (old):**
-> Dr. Yurka worked this weekend
+| Expression | Example Result | What It Gives You |
+|-----------|---------------|-------------------|
+| `formatDateTime(utcNow(), 'M/d')` | `2/24` | Today |
+| `formatDateTime(addDays(utcNow(), -1), 'M/d')` | `2/23` | Yesterday |
+| `dayOfWeek(utcNow())` | `0-6` | 0=Sun, 6=Sat |
+| `addDays(utcNow(), -7)` | last week | Subtract 7 days |
 
-**After (new email Volsky receives on Monday):**
+---
 
-| Date | Doctor On Call |
-|------|---------------|
-| 2/28 | — pending — |
-| 3/1  | — pending — |
+## API Endpoints (Optional — For Advanced Setup)
 
-**[ Submit Weekend Coverage ]** ← clickable link
+If you want Power Automate to fetch the email body from the API instead of hardcoding the HTML:
 
-**After Volsky fills in names:**
-
-| Date | Doctor On Call |
-|------|---------------|
-| 2/28 | Dr. Yurka |
-| 3/1  | Dr. Yurka |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/weekend-schedule/email-body?apiKey=nf6-schedule-key&format=html` | GET | Returns ready-to-use HTML email body |
+| `/api/weekend-schedule/submit?apiKey=nf6-schedule-key` | PUT | Saves doctor names from the form |
+| `/api/weekend-schedule` | GET | List all schedule entries |
+| `/api/weekend-schedule/bulk` | POST | Create date entries in bulk |
