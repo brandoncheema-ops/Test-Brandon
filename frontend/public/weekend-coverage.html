@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weekend Coverage - Submit</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Calibri, Arial, sans-serif; background: #f4f7f5; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .card { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 500px; width: 100%; overflow: hidden; }
+    .header { background: linear-gradient(135deg, #1a5f4a, #0d3a2a); padding: 24px; text-align: center; color: white; }
+    .header h1 { font-size: 20px; font-weight: 600; }
+    .header p { font-size: 13px; opacity: 0.8; margin-top: 4px; }
+    .body { padding: 24px; }
+    .date-row { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 14px; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb; }
+    .date-label { font-weight: 600; color: #1a5f4a; min-width: 50px; font-size: 18px; }
+    .date-day { font-size: 12px; color: #888; min-width: 30px; }
+    .date-row input { flex: 1; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 15px; outline: none; }
+    .date-row input:focus { border-color: #1a5f4a; box-shadow: 0 0 0 2px rgba(26,95,74,0.15); }
+    .btn { display: block; width: 100%; padding: 14px; background: #1a5f4a; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 8px; }
+    .btn:hover { background: #155a43; }
+    .btn:disabled { background: #94a3b8; cursor: not-allowed; }
+    .status { text-align: center; margin-top: 16px; padding: 12px; border-radius: 8px; display: none; }
+    .status.success { display: block; background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+    .status.error { display: block; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .loading { display: none; text-align: center; padding: 40px; }
+    .loading.show { display: block; }
+    .spinner { border: 3px solid #e5e7eb; border-top: 3px solid #1a5f4a; border-radius: 50%; width: 30px; height: 30px; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <h1>Weekend Coverage</h1>
+      <p id="weekend-label">Loading...</p>
+    </div>
+
+    <div class="loading show" id="loading">
+      <div class="spinner"></div>
+      <p>Loading weekend dates...</p>
+    </div>
+
+    <div class="body" id="form-body" style="display:none;">
+      <div id="entries"></div>
+      <button class="btn" id="submit-btn" onclick="submitCoverage()">Submit Coverage</button>
+      <div class="status" id="status"></div>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    const API_KEY = 'nf6-schedule-key';
+    let scheduleEntries = [];
+
+    async function loadWeekend() {
+      try {
+        const res = await fetch(`${API_BASE}/api/weekend-schedule/email-body?apiKey=${API_KEY}&format=json`);
+        // Use the schedule list endpoint instead
+        const schedRes = await fetch(`${API_BASE}/api/weekend-schedule?apiKey=${API_KEY}`);
+
+        // Get last weekend dates to show in header
+        const now = new Date();
+        const day = now.getDay();
+        const lastSun = new Date(now);
+        lastSun.setDate(now.getDate() - day);
+        const lastSat = new Date(lastSun);
+        lastSat.setDate(lastSun.getDate() - 1);
+
+        const satStr = `${lastSat.getMonth() + 1}/${lastSat.getDate()}`;
+        const sunStr = `${lastSun.getMonth() + 1}/${lastSun.getDate()}`;
+        document.getElementById('weekend-label').textContent = `Weekend of ${satStr} - ${sunStr}`;
+
+        // If there are entries from the API, use them
+        // Otherwise create blank entries for Sat + Sun
+        if (schedRes.ok) {
+          const all = await schedRes.json();
+          // Filter to last weekend
+          const satISO = lastSat.toISOString().slice(0, 10);
+          const sunISO = lastSun.toISOString().slice(0, 10);
+          scheduleEntries = all.filter(e => {
+            const d = e.date.slice(0, 10);
+            return d === satISO || d === sunISO;
+          });
+        }
+
+        // If no entries exist yet, show Sat/Sun with blank fields
+        if (scheduleEntries.length === 0) {
+          scheduleEntries = [
+            { _id: null, date: lastSat.toISOString(), doctorName: '' },
+            { _id: null, date: lastSun.toISOString(), doctorName: '' }
+          ];
+        }
+
+        renderEntries();
+      } catch (err) {
+        document.getElementById('loading').innerHTML = '<p style="color:#991b1b;">Could not load schedule. Make sure the server is running.</p>';
+      }
+    }
+
+    function renderEntries() {
+      const container = document.getElementById('entries');
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      container.innerHTML = scheduleEntries.map((e, i) => {
+        const d = new Date(e.date);
+        const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
+        const dayName = days[d.getDay()];
+        return `
+          <div class="date-row">
+            <span class="date-label">${dateStr}</span>
+            <span class="date-day">${dayName}</span>
+            <input type="text" id="doctor-${i}" placeholder="Doctor name..." value="${e.doctorName || ''}">
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('loading').classList.remove('show');
+      document.getElementById('form-body').style.display = 'block';
+    }
+
+    async function submitCoverage() {
+      const btn = document.getElementById('submit-btn');
+      const status = document.getElementById('status');
+      btn.disabled = true;
+      btn.textContent = 'Submitting...';
+      status.className = 'status';
+      status.style.display = 'none';
+
+      try {
+        // Build the submission
+        const updates = scheduleEntries.map((e, i) => ({
+          id: e._id,
+          date: e.date,
+          doctorName: document.getElementById(`doctor-${i}`).value.trim()
+        }));
+
+        // If entries already exist (have IDs), update them
+        const existing = updates.filter(u => u.id);
+        const newEntries = updates.filter(u => !u.id);
+
+        if (existing.length > 0) {
+          await fetch(`${API_BASE}/api/weekend-schedule/submit?apiKey=${API_KEY}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ entries: existing })
+          });
+        }
+
+        // If entries don't exist yet, create them with names
+        if (newEntries.length > 0) {
+          // Need JWT for create — use API key submit endpoint workaround
+          // Create via bulk with names included
+          const token = localStorage.getItem('token');
+          if (token) {
+            await fetch(`${API_BASE}/api/weekend-schedule/bulk`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({ entries: newEntries.map(e => ({ date: e.date, doctorName: e.doctorName })) })
+            });
+          }
+        }
+
+        status.className = 'status success';
+        status.textContent = 'Coverage submitted! You can close this page.';
+        btn.textContent = 'Submitted';
+      } catch (err) {
+        status.className = 'status error';
+        status.textContent = 'Error submitting. Please try again.';
+        btn.disabled = false;
+        btn.textContent = 'Submit Coverage';
+      }
+    }
+
+    loadWeekend();
+  </script>
+</body>
+</html>

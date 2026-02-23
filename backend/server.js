@@ -249,23 +249,24 @@ app.put('/api/invoices/:id', protect, authorize('owner', 'manager'), (req, res) 
 // WEEKEND SCHEDULE ROUTES
 // ============================================================
 
+const FORM_URL = process.env.WEEKEND_FORM_URL || '/weekend-coverage.html';
+
 // GET all weekend schedule entries (with optional date range filter)
 app.get('/api/weekend-schedule', protect, (req, res) => {
   const filter = {};
   if (req.query.startDate) filter.startDate = req.query.startDate;
   if (req.query.endDate) filter.endDate = req.query.endDate;
-  if (req.query.doctorName) filter.doctorName = req.query.doctorName;
   res.json(store.getWeekendSchedules(filter));
 });
 
 // GET last weekend's summary with dates (Power Automate calls this)
 app.get('/api/weekend-schedule/last-weekend', protect, (req, res) => {
   const summary = store.getLastWeekendSummary();
-  res.json(summary);
+  res.json({ ...summary, formUrl: FORM_URL });
 });
 
 // GET formatted email body for last weekend (Power Automate HTTP connector)
-// This endpoint returns plain text or HTML that Power Automate can drop into an email
+// Includes dates and a link for Volsky to submit doctor names
 app.get('/api/weekend-schedule/email-body', (req, res) => {
   const apiKey = req.query.apiKey || req.headers['x-api-key'];
   if (!apiKey || apiKey !== (process.env.SCHEDULE_API_KEY || 'nf6-schedule-key')) {
@@ -274,56 +275,74 @@ app.get('/api/weekend-schedule/email-body', (req, res) => {
 
   const summary = store.getLastWeekendSummary();
   const format = req.query.format || 'html';
+  const baseUrl = process.env.FRONTEND_URL || req.protocol + '://' + req.get('host');
+  const formLink = baseUrl + FORM_URL;
 
   if (format === 'text') {
-    return res.type('text/plain').send(
-      `Weekend Coverage Report\n` +
-      `Weekend of ${summary.saturday} to ${summary.sunday}\n\n` +
-      (summary.formatted || 'No schedule entries found for last weekend.')
-    );
+    const filled = summary.entries.filter(e => e.doctorName);
+    const pending = summary.entries.filter(e => !e.doctorName);
+    let body = `Weekend Coverage Report\nWeekend of ${summary.saturday} to ${summary.sunday}\n\n`;
+    if (filled.length > 0) {
+      body += filled.map(e => {
+        const d = new Date(e.date);
+        return `${d.getMonth() + 1}/${d.getDate()} - ${e.doctorName}`;
+      }).join('\n') + '\n\n';
+    }
+    if (pending.length > 0) {
+      body += `${pending.length} date(s) still need doctor names.\n`;
+    }
+    body += `\nSubmit coverage here: ${formLink}`;
+    return res.type('text/plain').send(body);
   }
 
   // HTML format for Outlook email body
+  const satDate = new Date(summary.saturday);
+  const sunDate = new Date(summary.sunday);
+  const satStr = `${satDate.getMonth() + 1}/${satDate.getDate()}`;
+  const sunStr = `${sunDate.getMonth() + 1}/${sunDate.getDate()}`;
+
   const html = `
     <div style="font-family: 'Segoe UI', Calibri, Arial, sans-serif;">
       <h3 style="color: #1a5f4a;">Weekend Coverage Report</h3>
-      <p><strong>Weekend of ${summary.saturday} to ${summary.sunday}</strong></p>
-      ${summary.entries.length > 0
-        ? `<table style="border-collapse: collapse; width: 100%;">
-            <tr style="background: #1a5f4a; color: white;">
-              <th style="padding: 8px 12px; text-align: left;">Date</th>
-              <th style="padding: 8px 12px; text-align: left;">Doctor</th>
-              <th style="padding: 8px 12px; text-align: left;">Notes</th>
-            </tr>
-            ${summary.entries.map((e, i) => {
-              const d = new Date(e.date);
-              const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
-              return `<tr style="background: ${i % 2 === 0 ? '#f9f9f9' : '#ffffff'};">
-                <td style="padding: 8px 12px; border-bottom: 1px solid #ddd;">${dateStr}</td>
-                <td style="padding: 8px 12px; border-bottom: 1px solid #ddd;">${e.doctorName}</td>
-                <td style="padding: 8px 12px; border-bottom: 1px solid #ddd;">${e.notes || '-'}</td>
-              </tr>`;
-            }).join('')}
-          </table>`
-        : '<p style="color: #888;">No schedule entries found for last weekend.</p>'
-      }
+      <p><strong>Weekend of ${satStr} - ${sunStr}</strong></p>
+      <table style="border-collapse: collapse; width: 100%;">
+        <tr style="background: #1a5f4a; color: white;">
+          <th style="padding: 8px 12px; text-align: left;">Date</th>
+          <th style="padding: 8px 12px; text-align: left;">Doctor</th>
+        </tr>
+        ${summary.entries.map((e, i) => {
+          const d = new Date(e.date);
+          const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
+          const name = e.doctorName || '<em style="color:#999;">— pending —</em>';
+          return `<tr style="background: ${i % 2 === 0 ? '#f9f9f9' : '#ffffff'};">
+            <td style="padding: 8px 12px; border-bottom: 1px solid #ddd;">${dateStr}</td>
+            <td style="padding: 8px 12px; border-bottom: 1px solid #ddd;">${name}</td>
+          </tr>`;
+        }).join('')}
+      </table>
+      <p style="margin-top: 20px;">
+        <a href="${formLink}" style="display: inline-block; background: #1a5f4a; color: white; padding: 10px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+          Submit Weekend Coverage
+        </a>
+      </p>
+      <p style="font-size: 12px; color: #888;">Click the button above to fill in who worked each day.</p>
     </div>
   `;
 
   res.type('text/html').send(html);
 });
 
-// POST a new weekend schedule entry
+// POST a new weekend schedule entry (date only, doctorName optional — Volsky fills in later)
 app.post('/api/weekend-schedule', protect, authorize('owner', 'manager'), (req, res) => {
-  const { doctorName, date } = req.body;
-  if (!doctorName || !date) {
-    return res.status(400).json({ message: 'doctorName and date are required' });
+  const { date } = req.body;
+  if (!date) {
+    return res.status(400).json({ message: 'date is required' });
   }
   const entry = store.createWeekendSchedule(req.body);
   res.status(201).json(entry);
 });
 
-// POST bulk schedule entries (for adding a full weekend at once)
+// POST bulk schedule entries (dates only for the upcoming weekend)
 app.post('/api/weekend-schedule/bulk', protect, authorize('owner', 'manager'), (req, res) => {
   const { entries } = req.body;
   if (!Array.isArray(entries) || entries.length === 0) {
@@ -331,6 +350,27 @@ app.post('/api/weekend-schedule/bulk', protect, authorize('owner', 'manager'), (
   }
   const created = entries.map(e => store.createWeekendSchedule(e));
   res.status(201).json(created);
+});
+
+// PUT update a schedule entry (Volsky uses this to fill in doctor name)
+app.put('/api/weekend-schedule/:id', protect, (req, res) => {
+  const entry = store.updateWeekendSchedule(req.params.id, req.body);
+  if (!entry) return res.status(404).json({ message: 'Schedule entry not found' });
+  res.json(entry);
+});
+
+// PUT submit coverage via API key (for the HTML form — no JWT needed)
+app.put('/api/weekend-schedule/submit', (req, res) => {
+  const apiKey = req.query.apiKey || req.headers['x-api-key'];
+  if (!apiKey || apiKey !== (process.env.SCHEDULE_API_KEY || 'nf6-schedule-key')) {
+    return res.status(401).json({ message: 'Invalid API key' });
+  }
+  const { entries } = req.body;
+  if (!Array.isArray(entries)) {
+    return res.status(400).json({ message: 'entries array is required' });
+  }
+  const updated = entries.map(e => store.updateWeekendSchedule(e.id, { doctorName: e.doctorName })).filter(Boolean);
+  res.json(updated);
 });
 
 // DELETE a weekend schedule entry

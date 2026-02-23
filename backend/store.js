@@ -214,18 +214,26 @@ const updateInvoice = (id, data) => {
 };
 
 // --- WEEKEND SCHEDULE ---
+// Stores weekend dates and coverage. Doctor names are filled in later by Volsky.
 const weekendSchedules = [];
 
 const createWeekendSchedule = (data) => {
   const entry = {
     _id: genId(),
-    doctorName: data.doctorName,
     date: new Date(data.date).toISOString(),
-    location: data.location || '',
+    doctorName: data.doctorName || '',
     notes: data.notes || '',
     createdAt: new Date()
   };
   weekendSchedules.push(entry);
+  return entry;
+};
+
+const updateWeekendSchedule = (id, data) => {
+  const entry = weekendSchedules.find(s => s._id === id);
+  if (!entry) return null;
+  if (data.doctorName !== undefined) entry.doctorName = data.doctorName;
+  if (data.notes !== undefined) entry.notes = data.notes;
   return entry;
 };
 
@@ -240,9 +248,6 @@ const getWeekendSchedules = (filter = {}) => {
       return d >= start && d <= end;
     });
   }
-  if (filter.doctorName) {
-    result = result.filter(s => s.doctorName.toLowerCase().includes(filter.doctorName.toLowerCase()));
-  }
 
   return result.sort((a, b) => new Date(a.date) - new Date(b.date));
 };
@@ -254,8 +259,7 @@ const deleteWeekendSchedule = (id) => {
 };
 
 /**
- * Returns last week's weekend schedule formatted with dates.
- * Output format: "2/21 - Dr. Yurka\n2/22 - Dr. Yurka"
+ * Returns last weekend's dates. Doctor names may be blank until Volsky fills them in.
  */
 const getLastWeekendSummary = () => {
   const now = new Date();
@@ -277,7 +281,8 @@ const getLastWeekendSummary = () => {
 
   const lines = entries.map(e => {
     const d = new Date(e.date);
-    return `${d.getMonth() + 1}/${d.getDate()} - ${e.doctorName}`;
+    const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
+    return e.doctorName ? `${dateStr} - ${e.doctorName}` : `${dateStr} - (pending)`;
   });
 
   return {
@@ -317,7 +322,7 @@ module.exports = {
   // Invoices
   createInvoice, getInvoices, getInvoiceById, updateInvoice,
   // Weekend Schedule
-  createWeekendSchedule, getWeekendSchedules, deleteWeekendSchedule, getLastWeekendSummary,
+  createWeekendSchedule, updateWeekendSchedule, getWeekendSchedules, deleteWeekendSchedule, getLastWeekendSummary,
   // Helpers
   populateBooking, populateInvoice
 };
