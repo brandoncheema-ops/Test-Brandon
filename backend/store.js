@@ -213,6 +213,82 @@ const updateInvoice = (id, data) => {
   return inv;
 };
 
+// --- WEEKEND SCHEDULE ---
+const weekendSchedules = [];
+
+const createWeekendSchedule = (data) => {
+  const entry = {
+    _id: genId(),
+    doctorName: data.doctorName,
+    date: new Date(data.date).toISOString(),
+    location: data.location || '',
+    notes: data.notes || '',
+    createdAt: new Date()
+  };
+  weekendSchedules.push(entry);
+  return entry;
+};
+
+const getWeekendSchedules = (filter = {}) => {
+  let result = [...weekendSchedules];
+
+  if (filter.startDate && filter.endDate) {
+    const start = new Date(filter.startDate);
+    const end = new Date(filter.endDate);
+    result = result.filter(s => {
+      const d = new Date(s.date);
+      return d >= start && d <= end;
+    });
+  }
+  if (filter.doctorName) {
+    result = result.filter(s => s.doctorName.toLowerCase().includes(filter.doctorName.toLowerCase()));
+  }
+
+  return result.sort((a, b) => new Date(a.date) - new Date(b.date));
+};
+
+const deleteWeekendSchedule = (id) => {
+  const idx = weekendSchedules.findIndex(s => s._id === id);
+  if (idx === -1) return null;
+  return weekendSchedules.splice(idx, 1)[0];
+};
+
+/**
+ * Returns last week's weekend schedule formatted with dates.
+ * Output format: "2/21 - Dr. Yurka\n2/22 - Dr. Yurka"
+ */
+const getLastWeekendSummary = () => {
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0=Sun, 6=Sat
+
+  // Find last Saturday and Sunday
+  const lastSunday = new Date(now);
+  lastSunday.setDate(now.getDate() - dayOfWeek);
+  lastSunday.setHours(23, 59, 59, 999);
+
+  const lastSaturday = new Date(lastSunday);
+  lastSaturday.setDate(lastSunday.getDate() - 1);
+  lastSaturday.setHours(0, 0, 0, 0);
+
+  const entries = getWeekendSchedules({
+    startDate: lastSaturday.toISOString(),
+    endDate: lastSunday.toISOString()
+  });
+
+  const lines = entries.map(e => {
+    const d = new Date(e.date);
+    return `${d.getMonth() + 1}/${d.getDate()} - ${e.doctorName}`;
+  });
+
+  return {
+    saturday: lastSaturday.toISOString().slice(0, 10),
+    sunday: lastSunday.toISOString().slice(0, 10),
+    entries,
+    formatted: lines.join('\n'),
+    htmlFormatted: lines.join('<br>')
+  };
+};
+
 // --- POPULATE helper (mimic Mongoose populate) ---
 const populateBooking = (booking) => {
   if (!booking) return booking;
@@ -240,6 +316,8 @@ module.exports = {
   createBooking, getBookings, getBookingById, updateBooking, deleteBooking,
   // Invoices
   createInvoice, getInvoices, getInvoiceById, updateInvoice,
+  // Weekend Schedule
+  createWeekendSchedule, getWeekendSchedules, deleteWeekendSchedule, getLastWeekendSummary,
   // Helpers
   populateBooking, populateInvoice
 };

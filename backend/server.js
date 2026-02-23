@@ -245,6 +245,101 @@ app.put('/api/invoices/:id', protect, authorize('owner', 'manager'), (req, res) 
   res.json(store.populateInvoice(invoice));
 });
 
+// ============================================================
+// WEEKEND SCHEDULE ROUTES
+// ============================================================
+
+// GET all weekend schedule entries (with optional date range filter)
+app.get('/api/weekend-schedule', protect, (req, res) => {
+  const filter = {};
+  if (req.query.startDate) filter.startDate = req.query.startDate;
+  if (req.query.endDate) filter.endDate = req.query.endDate;
+  if (req.query.doctorName) filter.doctorName = req.query.doctorName;
+  res.json(store.getWeekendSchedules(filter));
+});
+
+// GET last weekend's summary with dates (Power Automate calls this)
+app.get('/api/weekend-schedule/last-weekend', protect, (req, res) => {
+  const summary = store.getLastWeekendSummary();
+  res.json(summary);
+});
+
+// GET formatted email body for last weekend (Power Automate HTTP connector)
+// This endpoint returns plain text or HTML that Power Automate can drop into an email
+app.get('/api/weekend-schedule/email-body', (req, res) => {
+  const apiKey = req.query.apiKey || req.headers['x-api-key'];
+  if (!apiKey || apiKey !== (process.env.SCHEDULE_API_KEY || 'nf6-schedule-key')) {
+    return res.status(401).json({ message: 'Invalid API key' });
+  }
+
+  const summary = store.getLastWeekendSummary();
+  const format = req.query.format || 'html';
+
+  if (format === 'text') {
+    return res.type('text/plain').send(
+      `Weekend Coverage Report\n` +
+      `Weekend of ${summary.saturday} to ${summary.sunday}\n\n` +
+      (summary.formatted || 'No schedule entries found for last weekend.')
+    );
+  }
+
+  // HTML format for Outlook email body
+  const html = `
+    <div style="font-family: 'Segoe UI', Calibri, Arial, sans-serif;">
+      <h3 style="color: #1a5f4a;">Weekend Coverage Report</h3>
+      <p><strong>Weekend of ${summary.saturday} to ${summary.sunday}</strong></p>
+      ${summary.entries.length > 0
+        ? `<table style="border-collapse: collapse; width: 100%;">
+            <tr style="background: #1a5f4a; color: white;">
+              <th style="padding: 8px 12px; text-align: left;">Date</th>
+              <th style="padding: 8px 12px; text-align: left;">Doctor</th>
+              <th style="padding: 8px 12px; text-align: left;">Notes</th>
+            </tr>
+            ${summary.entries.map((e, i) => {
+              const d = new Date(e.date);
+              const dateStr = `${d.getMonth() + 1}/${d.getDate()}`;
+              return `<tr style="background: ${i % 2 === 0 ? '#f9f9f9' : '#ffffff'};">
+                <td style="padding: 8px 12px; border-bottom: 1px solid #ddd;">${dateStr}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #ddd;">${e.doctorName}</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid #ddd;">${e.notes || '-'}</td>
+              </tr>`;
+            }).join('')}
+          </table>`
+        : '<p style="color: #888;">No schedule entries found for last weekend.</p>'
+      }
+    </div>
+  `;
+
+  res.type('text/html').send(html);
+});
+
+// POST a new weekend schedule entry
+app.post('/api/weekend-schedule', protect, authorize('owner', 'manager'), (req, res) => {
+  const { doctorName, date } = req.body;
+  if (!doctorName || !date) {
+    return res.status(400).json({ message: 'doctorName and date are required' });
+  }
+  const entry = store.createWeekendSchedule(req.body);
+  res.status(201).json(entry);
+});
+
+// POST bulk schedule entries (for adding a full weekend at once)
+app.post('/api/weekend-schedule/bulk', protect, authorize('owner', 'manager'), (req, res) => {
+  const { entries } = req.body;
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return res.status(400).json({ message: 'entries array is required' });
+  }
+  const created = entries.map(e => store.createWeekendSchedule(e));
+  res.status(201).json(created);
+});
+
+// DELETE a weekend schedule entry
+app.delete('/api/weekend-schedule/:id', protect, authorize('owner'), (req, res) => {
+  const entry = store.deleteWeekendSchedule(req.params.id);
+  if (!entry) return res.status(404).json({ message: 'Schedule entry not found' });
+  res.json({ message: 'Schedule entry deleted' });
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', mode: 'in-memory', timestamp: new Date().toISOString() });
