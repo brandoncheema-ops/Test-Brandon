@@ -173,6 +173,41 @@ tr:hover{background:var(--hover)}
 .pill{padding:6px 16px;border-radius:20px;font-size:12px;font-weight:600;border:1px solid var(--border);background:var(--card);color:var(--text2);cursor:pointer;transition:all .2s}
 .pill.active{background:var(--pri);color:#fff;border-color:var(--pri)}
 
+/* Import/Export Toolbar */
+.ie-toolbar{display:flex;gap:8px;flex-wrap:wrap}
+.ie-toolbar .btn svg{width:14px;height:14px}
+.ie-dropdown{position:relative;display:inline-block}
+.ie-menu{position:absolute;top:100%;right:0;background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh);min-width:180px;z-index:60;margin-top:4px;display:none;overflow:hidden}
+.ie-menu.show{display:block}
+.ie-menu-item{display:flex;align-items:center;gap:10px;padding:10px 16px;font-size:13px;font-weight:500;color:var(--text);cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:background .15s}
+.ie-menu-item:hover{background:var(--hover)}
+.ie-menu-item svg{width:16px;height:16px;color:var(--muted);flex-shrink:0}
+.ie-menu-divider{height:1px;background:var(--border);margin:4px 0}
+
+/* Import Modal */
+.imp-modal{max-width:560px}
+.imp-dropzone{border:2px dashed var(--border);border-radius:var(--r);padding:40px 20px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg);position:relative;margin-bottom:20px}
+.imp-dropzone:hover,.imp-dropzone.dragover{border-color:var(--pri);background:rgba(26,95,74,.04)}
+.imp-dropzone input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.imp-icon{font-size:32px;color:var(--muted);margin-bottom:8px}
+.imp-text{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px}
+.imp-hint{font-size:12px;color:var(--muted)}
+.imp-preview{max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r);margin-bottom:16px}
+.imp-preview table{font-size:12px}
+.imp-preview th{position:sticky;top:0;background:var(--bg);z-index:1}
+.imp-preview td{padding:8px 10px;font-size:12px}
+.imp-stats{display:flex;gap:12px;margin-bottom:16px}
+.imp-stat{flex:1;text-align:center;padding:12px;background:var(--bg);border-radius:var(--r)}
+.imp-stat-num{font-size:20px;font-weight:700}
+.imp-stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:600;letter-spacing:.5px;margin-top:2px}
+.imp-alert{padding:12px 16px;border-radius:var(--r);font-size:13px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px}
+.imp-alert.warn{background:#fff3e0;color:#ef6c00;border:1px solid #ffe0b2}
+.imp-alert.info{background:#e3f2fd;color:#1565c0;border:1px solid #bbdefb}
+.imp-alert.ok{background:#e8f5e9;color:#2e7d32;border:1px solid #c8e6c9}
+[data-theme="dark"] .imp-alert.warn{background:#3a2e1b;color:#ffa726;border-color:#5a3e1b}
+[data-theme="dark"] .imp-alert.info{background:#1b2a3a;color:#42a5f5;border-color:#1b3a5a}
+[data-theme="dark"] .imp-alert.ok{background:#1b3a1b;color:#66bb6a;border-color:#1b5a1b}
+
 /* Upload Portal */
 .up-modal{max-width:540px}
 .up-guest-hdr{display:flex;align-items:center;gap:14px;padding-bottom:16px;border-bottom:1px solid var(--border);margin-bottom:20px}
@@ -362,8 +397,39 @@ tr:hover{background:var(--hover)}
 
 <!-- COMPLIANCE -->
 <div class="page" id="page-compliance">
-  <h2 class="pg-title">Document Compliance</h2>
-  <p class="pg-sub">Track required documents for each guest stay</p>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;gap:12px;flex-wrap:wrap">
+    <div>
+      <h2 class="pg-title">Document Compliance</h2>
+      <p class="pg-sub">Track required documents for each guest stay</p>
+    </div>
+    <div class="ie-toolbar">
+      <div class="ie-dropdown" id="exportDropdown">
+        <button class="btn btn-o" onclick="toggleExportMenu()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export
+        </button>
+        <div class="ie-menu" id="exportMenu">
+          <button class="ie-menu-item" onclick="exportCSV()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>
+            Export as CSV
+          </button>
+          <button class="ie-menu-item" onclick="exportJSON()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M10 12l-2 4 2 4M14 12l2 4-2 4"/></svg>
+            Export as JSON
+          </button>
+          <div class="ie-menu-divider"></div>
+          <button class="ie-menu-item" onclick="exportAllBookingsCSV()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 10h16M4 14h10M4 18h7"/></svg>
+            Export All Bookings (CSV)
+          </button>
+        </div>
+      </div>
+      <button class="btn btn-p" onclick="openImportModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Import
+      </button>
+    </div>
+  </div>
   <div class="kpi-grid" id="compKpis"></div>
   <div class="filter-pills" id="compFilters">
     <span class="pill active" onclick="compFilter('all',this)">All Guests</span>
@@ -460,6 +526,29 @@ tr:hover{background:var(--hover)}
     <button class="modal-x" onclick="closeUpModal()">&times;</button>
   </div>
   <div class="modal-b" id="upBody"></div>
+</div>
+</div>
+
+<!-- Import Modal -->
+<div class="modal-ov" id="impModal" style="display:none" onclick="if(event.target===this)closeImportModal()">
+<div class="modal imp-modal">
+  <div class="modal-h">
+    <h3>Import Compliance Data</h3>
+    <button class="modal-x" onclick="closeImportModal()">&times;</button>
+  </div>
+  <div class="modal-b" id="impBody">
+    <div class="imp-alert info">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      <div>Upload a <strong>CSV</strong> or <strong>JSON</strong> file with booking &amp; compliance data. Matching guests will update existing records; new entries will be added.</div>
+    </div>
+    <div class="imp-dropzone" id="impDropzone" ondragover="impDzOver(event,this)" ondragleave="impDzLeave(this)" ondrop="impDzDrop(event)">
+      <input type="file" accept=".csv,.json" onchange="impFileSelect(event)">
+      <div class="imp-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+      <div class="imp-text">Drop your file here or click to browse</div>
+      <div class="imp-hint">Accepts CSV (.csv) or JSON (.json) files</div>
+    </div>
+    <div id="impPreviewArea"></div>
+  </div>
 </div>
 </div>
 
@@ -948,6 +1037,368 @@ function saveB(e){
   var d={id:nextId++,yr:yr,g:document.getElementById('f-g').value,ci:ci,co:co,n:nights,rate:rate,total:total,alma:alma,clean:clean,net:net,st:st,pay:'pending',note:document.getElementById('f-n').value,own:isOwn,docs:{r:0,o:0,m:0}};
   if(isOwn){d.docs={r:-1,o:-1,m:-1}}
   B.push(d);closeM();renderBookings();
+}
+
+// ── IMPORT / EXPORT ──
+function toggleExportMenu(){
+  var menu=document.getElementById('exportMenu');
+  menu.classList.toggle('show');
+}
+// Close export menu when clicking outside
+document.addEventListener('click',function(e){
+  var dd=document.getElementById('exportDropdown');
+  if(dd&&!dd.contains(e.target)){
+    document.getElementById('exportMenu').classList.remove('show');
+  }
+});
+
+function downloadFile(content,filename,type){
+  var blob=new Blob([content],{type:type});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
+
+function exportCSV(){
+  document.getElementById('exportMenu').classList.remove('show');
+  var bk=B.filter(function(b){return !b.own});
+  var headers=['ID','Year','Guest','Check-In','Check-Out','Nights','Rate','Gross Revenue','Alma Fee','Cleaning Fee','Net Income','Status','Payment','Notes','Reconciliation','Occupancy Agreement','Membership Agreement'];
+  var docStatusLabel=function(v){return v===1?'Available':v===0?'Missing':'N/A'};
+  var rows=bk.map(function(b){
+    return [b.id,b.yr,'"'+b.g.replace(/"/g,'""')+'"',b.ci,b.co,b.n,b.rate.toFixed(2),b.total.toFixed(2),b.alma.toFixed(2),b.clean.toFixed(2),b.net.toFixed(2),b.st,b.pay,'"'+(b.note||'').replace(/"/g,'""')+'"',docStatusLabel(b.docs.r),docStatusLabel(b.docs.o),docStatusLabel(b.docs.m)].join(',');
+  });
+  var csv=headers.join(',')+'\n'+rows.join('\n');
+  var d=new Date().toISOString().slice(0,10);
+  downloadFile(csv,'nf6-compliance-export-'+d+'.csv','text/csv');
+}
+
+function exportJSON(){
+  document.getElementById('exportMenu').classList.remove('show');
+  var bk=B.filter(function(b){return !b.own});
+  var exportData={
+    exported:new Date().toISOString(),
+    property:prop.name+' — '+prop.loc,
+    totalGuests:bk.length,
+    bookings:bk.map(function(b){
+      return {
+        id:b.id,year:b.yr,guest:b.g,
+        checkIn:b.ci,checkOut:b.co,nights:b.n,
+        ratePerNight:b.rate,grossRevenue:b.total,
+        almaFee:b.alma,cleaningFee:b.clean,netIncome:b.net,
+        status:b.st,payment:b.pay,notes:b.note||'',
+        documents:{
+          reconciliation:b.docs.r===1?'Available':b.docs.r===0?'Missing':'N/A',
+          occupancyAgreement:b.docs.o===1?'Available':b.docs.o===0?'Missing':'N/A',
+          membershipAgreement:b.docs.m===1?'Available':b.docs.m===0?'Missing':'N/A'
+        }
+      };
+    })
+  };
+  var json=JSON.stringify(exportData,null,2);
+  var d=new Date().toISOString().slice(0,10);
+  downloadFile(json,'nf6-compliance-export-'+d+'.json','application/json');
+}
+
+function exportAllBookingsCSV(){
+  document.getElementById('exportMenu').classList.remove('show');
+  var headers=['ID','Year','Guest','Check-In','Check-Out','Nights','Rate','Gross Revenue','Alma Fee','Cleaning Fee','Net Income','Status','Payment','Notes','Owner Stay','Reconciliation','Occupancy Agreement','Membership Agreement'];
+  var docStatusLabel=function(v){return v===1?'Available':v===0?'Missing':'N/A'};
+  var rows=B.map(function(b){
+    return [b.id,b.yr,'"'+b.g.replace(/"/g,'""')+'"',b.ci,b.co,b.n,b.rate.toFixed(2),b.total.toFixed(2),b.alma.toFixed(2),b.clean.toFixed(2),b.net.toFixed(2),b.st,b.pay,'"'+(b.note||'').replace(/"/g,'""')+'"',b.own?'Yes':'No',docStatusLabel(b.docs.r),docStatusLabel(b.docs.o),docStatusLabel(b.docs.m)].join(',');
+  });
+  var csv=headers.join(',')+'\n'+rows.join('\n');
+  var d=new Date().toISOString().slice(0,10);
+  downloadFile(csv,'nf6-all-bookings-'+d+'.csv','text/csv');
+}
+
+// ── IMPORT ──
+var impParsedData=null;
+
+function openImportModal(){
+  impParsedData=null;
+  document.getElementById('impPreviewArea').innerHTML='';
+  document.getElementById('impModal').style.display='flex';
+}
+function closeImportModal(){
+  document.getElementById('impModal').style.display='none';
+  impParsedData=null;
+}
+
+function impDzOver(e,el){e.preventDefault();e.stopPropagation();el.classList.add('dragover')}
+function impDzLeave(el){el.classList.remove('dragover')}
+function impDzDrop(e){
+  e.preventDefault();e.stopPropagation();
+  document.getElementById('impDropzone').classList.remove('dragover');
+  if(e.dataTransfer.files.length>0)processImportFile(e.dataTransfer.files[0]);
+}
+function impFileSelect(e){
+  if(e.target.files.length>0)processImportFile(e.target.files[0]);
+}
+
+function processImportFile(file){
+  var ext=(file.name.split('.').pop()||'').toLowerCase();
+  if(ext!=='csv'&&ext!=='json'){
+    showImpError('Unsupported file type. Please upload a CSV or JSON file.');
+    return;
+  }
+  if(file.size>5*1024*1024){
+    showImpError('File too large. Maximum size is 5MB.');
+    return;
+  }
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      if(ext==='csv') impParsedData=parseImportCSV(e.target.result);
+      else impParsedData=parseImportJSON(e.target.result);
+      renderImportPreview(file.name);
+    }catch(err){
+      showImpError('Error parsing file: '+err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function showImpError(msg){
+  document.getElementById('impPreviewArea').innerHTML='<div class="imp-alert warn"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:1px"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><div>'+msg+'</div></div>';
+}
+
+function parseImportCSV(text){
+  var lines=text.trim().split('\n');
+  if(lines.length<2)throw new Error('CSV must have a header row and at least one data row.');
+  // Parse header
+  var headers=parseCSVLine(lines[0]).map(function(h){return h.trim().toLowerCase()});
+  // Map known header names
+  var colMap={};
+  var knownCols={
+    'id':['id'],'year':['year','yr'],'guest':['guest','guest name','guestname','g','name'],
+    'checkin':['check-in','checkin','check_in','ci','arrival'],
+    'checkout':['check-out','checkout','check_out','co','departure'],
+    'nights':['nights','n','night'],
+    'rate':['rate','rate/night','ratepernight','rate per night','nightly rate'],
+    'gross':['gross revenue','gross','grossrevenue','total','revenue'],
+    'almafee':['alma fee','almafee','alma','platform fee','platformfee'],
+    'cleanfee':['cleaning fee','cleaningfee','clean','cleaning'],
+    'net':['net income','net','netincome','income'],
+    'status':['status','st','booking status'],
+    'payment':['payment','pay','payment status','paymentstatus'],
+    'notes':['notes','note','comments'],
+    'owner':['owner stay','ownerstay','owner','own'],
+    'reconciliation':['reconciliation','recon','r','alma house guest reconciliation'],
+    'occupancy':['occupancy agreement','occupancy','o','occ'],
+    'membership':['membership agreement','membership','m','mem']
+  };
+  Object.keys(knownCols).forEach(function(key){
+    knownCols[key].forEach(function(alias){
+      var idx=headers.indexOf(alias);
+      if(idx>=0&&!colMap[key])colMap[key]=idx;
+    });
+  });
+  if(!colMap.guest)throw new Error('CSV must have a "Guest" column.');
+
+  var results=[];
+  for(var i=1;i<lines.length;i++){
+    if(!lines[i].trim())continue;
+    var cols=parseCSVLine(lines[i]);
+    var getCol=function(key){return colMap[key]!==undefined?cols[colMap[key]]||'':''};
+    var docVal=function(v){v=v.trim().toLowerCase();if(v==='available'||v==='1'||v==='yes'||v==='true')return 1;if(v==='n/a'||v==='-1'||v==='na')return -1;return 0};
+    var guest=getCol('guest').trim();
+    if(!guest)continue;
+    var ci=getCol('checkin').trim();
+    var co=getCol('checkout').trim();
+    var rate=parseFloat(getCol('rate'))||0;
+    var nights=parseInt(getCol('nights'))||0;
+    if(ci&&co&&!nights){
+      var d1=new Date(ci),d2=new Date(co);
+      if(!isNaN(d1)&&!isNaN(d2))nights=Math.ceil((d2-d1)/864e5);
+    }
+    var gross=parseFloat(getCol('gross'))||0;
+    if(!gross&&rate&&nights)gross=rate*nights;
+    var alma=parseFloat(getCol('almafee'))||0;
+    if(!alma&&gross)alma=gross*0.2;
+    var clean=parseFloat(getCol('cleanfee'))||0;
+    var net=parseFloat(getCol('net'))||0;
+    if(!net&&gross)net=gross-alma-clean;
+    var isOwn=getCol('owner').trim().toLowerCase();
+    isOwn=(isOwn==='yes'||isOwn==='true'||isOwn==='1');
+    var st=getCol('status').trim().toLowerCase().replace(/\s+/g,'_')||'confirmed';
+    if(st==='owner_stay'||st==='ownerstay')isOwn=true;
+    var yr=parseInt(getCol('year'))||0;
+    if(!yr&&ci){var pd=new Date(ci);if(!isNaN(pd))yr=pd.getFullYear()}
+
+    results.push({
+      yr:yr,g:guest,ci:ci,co:co,n:nights,rate:rate,total:gross,
+      alma:alma,clean:clean,net:net,st:st,
+      pay:getCol('payment').trim()||'pending',
+      note:getCol('notes').trim(),
+      own:isOwn,
+      docs:{
+        r:isOwn?-1:docVal(getCol('reconciliation')),
+        o:isOwn?-1:docVal(getCol('occupancy')),
+        m:isOwn?-1:docVal(getCol('membership'))
+      }
+    });
+  }
+  if(results.length===0)throw new Error('No valid data rows found in CSV.');
+  return results;
+}
+
+function parseCSVLine(line){
+  var result=[], current='', inQuotes=false;
+  for(var i=0;i<line.length;i++){
+    var c=line[i];
+    if(inQuotes){
+      if(c==='"'){
+        if(i+1<line.length&&line[i+1]==='"'){current+='"';i++}
+        else inQuotes=false;
+      } else current+=c;
+    } else {
+      if(c==='"')inQuotes=true;
+      else if(c===','){result.push(current);current=''}
+      else current+=c;
+    }
+  }
+  result.push(current);
+  return result;
+}
+
+function parseImportJSON(text){
+  var data=JSON.parse(text);
+  var bookings=Array.isArray(data)?data:(data.bookings||data.data||[]);
+  if(!Array.isArray(bookings)||bookings.length===0)throw new Error('JSON must contain a bookings array.');
+  var results=[];
+  bookings.forEach(function(b){
+    var guest=b.guest||b.g||b.guestName||b.name||'';
+    if(!guest)return;
+    var ci=b.checkIn||b.ci||b.checkin||b.check_in||b.arrival||'';
+    var co=b.checkOut||b.co||b.checkout||b.check_out||b.departure||'';
+    var rate=parseFloat(b.ratePerNight||b.rate||b.ratepernight||0);
+    var nights=parseInt(b.nights||b.n||0);
+    if(ci&&co&&!nights){
+      var d1=new Date(ci),d2=new Date(co);
+      if(!isNaN(d1)&&!isNaN(d2))nights=Math.ceil((d2-d1)/864e5);
+    }
+    var gross=parseFloat(b.grossRevenue||b.gross||b.total||b.revenue||0);
+    if(!gross&&rate&&nights)gross=rate*nights;
+    var alma=parseFloat(b.almaFee||b.alma||b.platformFee||b.platformfee||0);
+    if(!alma&&gross)alma=gross*0.2;
+    var clean=parseFloat(b.cleaningFee||b.clean||b.cleaning||0);
+    var net=parseFloat(b.netIncome||b.net||b.income||0);
+    if(!net&&gross)net=gross-alma-clean;
+    var isOwn=!!b.own||!!b.ownerStay;
+    var st=(b.status||b.st||'confirmed').toLowerCase().replace(/\s+/g,'_');
+    if(st==='owner_stay')isOwn=true;
+    var yr=parseInt(b.year||b.yr||0);
+    if(!yr&&ci){var pd=new Date(ci);if(!isNaN(pd))yr=pd.getFullYear()}
+    // Parse docs
+    var docs=b.documents||b.docs||{};
+    var docVal=function(v){if(typeof v==='number')return v;if(typeof v==='string'){v=v.trim().toLowerCase();if(v==='available'||v==='1'||v==='yes')return 1;if(v==='n/a'||v==='-1'||v==='na')return -1}return 0};
+    var dr=docs.reconciliation!==undefined?docs.reconciliation:(docs.r!==undefined?docs.r:0);
+    var dOcc=docs.occupancyAgreement!==undefined?docs.occupancyAgreement:(docs.o!==undefined?docs.o:0);
+    var dm=docs.membershipAgreement!==undefined?docs.membershipAgreement:(docs.m!==undefined?docs.m:0);
+
+    results.push({
+      yr:yr,g:guest,ci:ci,co:co,n:nights,rate:rate,total:gross,
+      alma:alma,clean:clean,net:net,st:st,
+      pay:b.payment||b.pay||'pending',
+      note:b.notes||b.note||'',
+      own:isOwn,
+      docs:{
+        r:isOwn?-1:docVal(dr),
+        o:isOwn?-1:docVal(dOcc),
+        m:isOwn?-1:docVal(dm)
+      }
+    });
+  });
+  if(results.length===0)throw new Error('No valid booking records found in JSON.');
+  return results;
+}
+
+function renderImportPreview(filename){
+  if(!impParsedData||impParsedData.length===0)return;
+  var data=impParsedData;
+  // Count new vs existing
+  var newCount=0,updateCount=0;
+  data.forEach(function(d){
+    var existing=B.find(function(b){return b.g.toLowerCase()===d.g.toLowerCase()&&b.ci===d.ci});
+    if(existing)updateCount++;else newCount++;
+  });
+  var docStatusLabel=function(v){return v===1?'<span class="badge b-ok">Available</span>':v===0?'<span class="badge b-err">Missing</span>':'<span class="badge b-na">N/A</span>'};
+
+  var html='<div class="imp-alert ok"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:1px"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><div>Parsed <strong>'+data.length+'</strong> record'+(data.length!==1?'s':'')+' from <strong>'+filename+'</strong></div></div>';
+
+  html+='<div class="imp-stats">'+
+    '<div class="imp-stat"><div class="imp-stat-num">'+data.length+'</div><div class="imp-stat-label">Total Records</div></div>'+
+    '<div class="imp-stat"><div class="imp-stat-num" style="color:var(--ok)">'+newCount+'</div><div class="imp-stat-label">New Entries</div></div>'+
+    '<div class="imp-stat"><div class="imp-stat-num" style="color:var(--info)">'+updateCount+'</div><div class="imp-stat-label">Updates</div></div>'+
+    '</div>';
+
+  // Preview table
+  html+='<div class="imp-preview"><table><thead><tr><th>Guest</th><th>Check-In</th><th>Nights</th><th>Gross</th><th>Recon</th><th>Occ</th><th>Mem</th><th>Type</th></tr></thead><tbody>';
+  data.forEach(function(d){
+    var existing=B.find(function(b){return b.g.toLowerCase()===d.g.toLowerCase()&&b.ci===d.ci});
+    var typeLabel=existing?'<span class="badge b-info">Update</span>':'<span class="badge b-ok">New</span>';
+    html+='<tr><td class="fw6">'+d.g+'</td><td>'+d.ci+'</td><td>'+d.n+'</td><td>'+$(d.total)+'</td>'+
+      '<td>'+docStatusLabel(d.docs.r)+'</td><td>'+docStatusLabel(d.docs.o)+'</td><td>'+docStatusLabel(d.docs.m)+'</td>'+
+      '<td>'+typeLabel+'</td></tr>';
+  });
+  html+='</tbody></table></div>';
+
+  html+='<div style="display:flex;gap:10px;justify-content:flex-end">'+
+    '<button class="btn btn-o" onclick="closeImportModal()">Cancel</button>'+
+    '<button class="btn btn-p" onclick="confirmImport()">Import '+data.length+' Record'+(data.length!==1?'s':'')+'</button></div>';
+
+  document.getElementById('impPreviewArea').innerHTML=html;
+}
+
+function confirmImport(){
+  if(!impParsedData||impParsedData.length===0)return;
+  var added=0,updated=0;
+  impParsedData.forEach(function(d){
+    // Try to match existing booking by guest name + check-in date
+    var existing=B.find(function(b){return b.g.toLowerCase()===d.g.toLowerCase()&&b.ci===d.ci});
+    if(existing){
+      // Update existing record
+      if(d.co)existing.co=d.co;
+      if(d.n)existing.n=d.n;
+      if(d.rate)existing.rate=d.rate;
+      if(d.total)existing.total=d.total;
+      if(d.alma)existing.alma=d.alma;
+      if(d.net)existing.net=d.net;
+      if(d.st)existing.st=d.st;
+      if(d.pay&&d.pay!=='pending')existing.pay=d.pay;
+      if(d.note)existing.note=d.note;
+      // Update doc status — only upgrade (0→1), never downgrade (1→0)
+      docKeys.forEach(function(k){
+        if(d.docs[k]===1&&existing.docs[k]===0)existing.docs[k]=1;
+      });
+      updated++;
+    } else {
+      // Add new booking
+      var newB={
+        id:nextId++,yr:d.yr,g:d.g,ci:d.ci,co:d.co,n:d.n,
+        rate:d.rate,total:d.total,alma:d.alma,clean:d.clean,net:d.net,
+        st:d.st,pay:d.pay,note:d.note,own:d.own,docs:d.docs
+      };
+      B.push(newB);
+      added++;
+    }
+  });
+
+  // Show success and close
+  closeImportModal();
+  renderComp();
+
+  // Show notification
+  var msg='Import complete: '+added+' added, '+updated+' updated.';
+  var notif=document.createElement('div');
+  notif.style.cssText='position:fixed;top:20px;right:20px;z-index:300;background:var(--ok);color:#fff;padding:14px 24px;border-radius:var(--r);font-size:14px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.2);transition:opacity .3s;display:flex;align-items:center;gap:10px';
+  notif.innerHTML='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>'+msg;
+  document.body.appendChild(notif);
+  setTimeout(function(){notif.style.opacity='0';setTimeout(function(){document.body.removeChild(notif)},300)},3000);
 }
 
 // ── INIT ──
