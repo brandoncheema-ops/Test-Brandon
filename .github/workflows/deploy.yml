@@ -1,0 +1,43 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [claude/nf6-property-management-7Lvr2]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build Frontend
+        run: |
+          cd frontend
+          npm ci
+          REACT_APP_API_URL=https://brandon.nfapps.ai/Test-Brandon/api npm run build
+        env:
+          CI: false
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /tmp && rm -rf Test-Brandon
+            git clone --depth 1 -b claude/nf6-property-management-7Lvr2 https://github.com/brandoncheema-ops/Test-Brandon.git
+            rm -f Test-Brandon/render.yaml Test-Brandon/render.json
+            mkdir -p /opt/apps/Test-Brandon/backend
+            rsync -av --delete --exclude='.git' --exclude='node_modules' Test-Brandon/backend/ /opt/apps/Test-Brandon/backend/
+            mkdir -p /var/www/brandon.nfapps.ai/Test-Brandon
+            rsync -av --delete Test-Brandon/frontend/build/ /var/www/brandon.nfapps.ai/Test-Brandon/
+            cd /opt/apps/Test-Brandon/backend
+            npm ci --production 2>/dev/null || npm install --production
+            pm2 restart test-brandon-backend 2>/dev/null || pm2 start server.js --name test-brandon-backend --cwd /opt/apps/Test-Brandon/backend
+            pm2 save && rm -rf /tmp/Test-Brandon
