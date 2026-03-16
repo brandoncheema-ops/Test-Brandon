@@ -27,7 +27,7 @@ async function main() {
   // ---------------------------------------------------------------------------
   app.use(helmet({ contentSecurityPolicy: false }));
   app.use(cors({
-    origin: env.NODE_ENV === 'development' ? 'http://localhost:3001' : true,
+    origin: true,
     credentials: true,
   }));
   app.use(express.json({ limit: '5mb' }));
@@ -70,11 +70,13 @@ async function main() {
     });
   });
 
-  // Serve frontend in production
-  if (env.NODE_ENV === 'production') {
-    const frontendPath = path.resolve(__dirname, '../../frontend/dist');
+  // Serve frontend static files
+  const frontendPath = path.resolve(__dirname, '../../frontend/dist');
+  const fs = require('fs');
+  if (fs.existsSync(frontendPath)) {
     app.use(express.static(frontendPath));
-    app.get('*', (_req, res) => {
+    // SPA fallback - serve index.html for non-API routes
+    app.get(/^(?!\/api).*/, (_req: any, res: any) => {
       res.sendFile(path.join(frontendPath, 'index.html'));
     });
   }

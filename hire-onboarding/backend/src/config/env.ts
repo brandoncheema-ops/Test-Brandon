@@ -20,7 +20,7 @@ const envSchema = z.object({
     .default('balcpa.com'),
 
   // Database
-  DATABASE_URL: z.string().url(),
+  DATABASE_URL: z.string().min(1),
   DATABASE_POOL_MIN: z.coerce.number().default(2),
   DATABASE_POOL_MAX: z.coerce.number().default(10),
 
@@ -34,22 +34,22 @@ const envSchema = z.object({
   DASHBOARD_USERNAME: z.string().default('admin'),
   DASHBOARD_PASSWORD_HASH: z.string().optional(),
 
-  // Azure / Microsoft Graph
-  AZURE_TENANT_ID: z.string().min(1),
-  AZURE_CLIENT_ID: z.string().min(1),
-  AZURE_CLIENT_SECRET: z.string().min(1),
+  // Azure / Microsoft Graph (optional in demo mode)
+  AZURE_TENANT_ID: z.string().default('demo'),
+  AZURE_CLIENT_ID: z.string().default('demo'),
+  AZURE_CLIENT_SECRET: z.string().default('demo'),
 
   // Automation inbox
-  AUTOMATION_INBOX_EMAIL: z.string().email(),
+  AUTOMATION_INBOX_EMAIL: z.string().default('hire-automation@balcpa.com'),
   EMAIL_POLL_INTERVAL_SECONDS: z.coerce.number().default(60),
 
-  // SharePoint
-  SHAREPOINT_SITE_ID: z.string().min(1),
-  SHAREPOINT_DRIVE_ID: z.string().min(1),
+  // SharePoint (optional in demo mode)
+  SHAREPOINT_SITE_ID: z.string().default('demo'),
+  SHAREPOINT_DRIVE_ID: z.string().default('demo'),
   SHAREPOINT_CONTRACTS_FOLDER: z.string().default('Contracts/Employees'),
 
-  // LLM
-  ANTHROPIC_API_KEY: z.string().min(1),
+  // LLM (optional in demo mode)
+  ANTHROPIC_API_KEY: z.string().default('demo'),
   LLM_MODEL: z.string().default('claude-sonnet-4-6'),
   LLM_MAX_TOKENS: z.coerce.number().default(4096),
   LLM_CONFIDENCE_THRESHOLD: z.coerce.number().min(0).max(1).default(0.8),
