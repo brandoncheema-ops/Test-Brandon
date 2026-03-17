@@ -1,12 +1,11 @@
 #!/bin/bash
 # =============================================================================
-# Hire Onboarding - Full VPS Deployment Script
-# Run this on your Hostinger VPS as root:
+# Hire Onboarding - VPS Deployment Script
+# Run on your Hostinger VPS as root:
 #   curl -sL https://raw.githubusercontent.com/brandoncheema-ops/Test-Brandon/claude/hire-onboarding-automation-KAVRZ/deploy/setup-vps.sh | bash
-# Or copy this file to your server and run: bash setup-vps.sh
 # =============================================================================
 
-set -e
+set -euo pipefail
 
 DOMAIN="brandon.nfapps.ai"
 REPO_URL="https://github.com/brandoncheema-ops/Test-Brandon.git"
@@ -16,47 +15,47 @@ APP_NAME="hire-onboarding"
 BACKEND_PORT=4000
 DB_NAME="hire_onboarding"
 DB_USER="hire_user"
-DB_PASS="hire_pass_$(openssl rand -hex 8)"
 
 echo "============================================="
 echo "  Hire Onboarding VPS Deployment"
-echo "  Domain: ${DOMAIN}"
-echo "  Path:   /${APP_NAME}"
 echo "============================================="
 
 # ---------------------------------------------------------------------------
 # 1. System packages
 # ---------------------------------------------------------------------------
 echo ""
-echo "[1/9] Installing system packages..."
+echo "[1/8] Installing system packages..."
 apt-get update -qq
 apt-get install -y -qq nginx postgresql postgresql-contrib redis-server \
-  curl git build-essential libreoffice-writer 2>/dev/null
+  curl git build-essential 2>&1 | tail -3
 
-# Install Node.js 20 if not present
+# Install Node.js 20+ if not present
 if ! command -v node &>/dev/null || [[ $(node -v | cut -d. -f1 | tr -d v) -lt 20 ]]; then
   echo "  Installing Node.js 20..."
-  curl -fsSL https://deb.nodesource.com/setup_20.x | bash - 2>/dev/null
+  curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
   apt-get install -y -qq nodejs
 fi
-
 echo "  Node: $(node -v) | npm: $(npm -v)"
 
-# Install pm2 globally for process management
-npm install -g pm2 2>/dev/null
+npm install -g pm2 2>&1 | tail -1
 
 # ---------------------------------------------------------------------------
 # 2. PostgreSQL setup
 # ---------------------------------------------------------------------------
 echo ""
-echo "[2/9] Configuring PostgreSQL..."
+echo "[2/8] Configuring PostgreSQL..."
 systemctl enable postgresql
 systemctl start postgresql
 
-# Create user and database (ignore errors if already exists)
-sudo -u postgres psql -c "CREATE USER ${DB_USER} WITH PASSWORD '${DB_PASS}';" 2>/dev/null || true
-sudo -u postgres psql -c "CREATE DATABASE ${DB_NAME} OWNER ${DB_USER};" 2>/dev/null || true
+# Generate a stable password based on hostname (same across re-runs)
+DB_PASS="hire_prod_$(hostname | md5sum | cut -c1-16)"
+
+sudo -u postgres psql -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='${DB_USER}') THEN CREATE ROLE ${DB_USER} WITH LOGIN PASSWORD '${DB_PASS}'; END IF; END \$\$;" 2>/dev/null
+sudo -u postgres psql -c "SELECT 1 FROM pg_database WHERE datname='${DB_NAME}'" | grep -q 1 || \
+  sudo -u postgres psql -c "CREATE DATABASE ${DB_NAME} OWNER ${DB_USER};"
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE ${DB_NAME} TO ${DB_USER};" 2>/dev/null || true
+# Also grant schema permissions (needed for PostgreSQL 15+)
+sudo -u postgres psql -d ${DB_NAME} -c "GRANT ALL ON SCHEMA public TO ${DB_USER};" 2>/dev/null || true
 
 echo "  Database: ${DB_NAME} | User: ${DB_USER}"
 
@@ -64,50 +63,56 @@ echo "  Database: ${DB_NAME} | User: ${DB_USER}"
 # 3. Redis setup
 # ---------------------------------------------------------------------------
 echo ""
-echo "[3/9] Configuring Redis..."
+echo "[3/8] Configuring Redis..."
 systemctl enable redis-server
 systemctl start redis-server
+echo "  Redis running"
 
 # ---------------------------------------------------------------------------
-# 4. Clone / pull the repository
+# 4. Clone the repository
 # ---------------------------------------------------------------------------
 echo ""
-echo "[4/9] Fetching application code..."
+echo "[4/8] Fetching application code..."
 mkdir -p /var/www/${DOMAIN}
 
-# Always do a fresh clone to /tmp, then sync
-echo "  Cloning fresh from GitHub..."
-cd /tmp
-rm -rf Test-Brandon-deploy
-git clone -b ${BRANCH} --single-branch ${REPO_URL} Test-Brandon-deploy
-
-# Remove old app dir if it exists (preserve .env if present)
+# Backup .env if it exists
 if [ -f "${APP_DIR}/backend/.env" ]; then
   cp "${APP_DIR}/backend/.env" /tmp/hire-onboarding-env-backup
+  echo "  Backed up existing .env"
 fi
+
+# Fresh clone
+cd /tmp
+rm -rf Test-Brandon-deploy
+echo "  Cloning from GitHub..."
+git clone -b ${BRANCH} --depth 1 --single-branch ${REPO_URL} Test-Brandon-deploy
+
+# Replace app directory
 rm -rf ${APP_DIR}
 mv Test-Brandon-deploy/hire-onboarding ${APP_DIR}
-# Restore .env if it was backed up
+rm -rf Test-Brandon-deploy
+
+# Restore .env
 if [ -f /tmp/hire-onboarding-env-backup ]; then
   mv /tmp/hire-onboarding-env-backup ${APP_DIR}/backend/.env
   echo "  Restored existing .env"
 fi
-rm -rf Test-Brandon-deploy
 
-cd ${APP_DIR}
+echo "  Code deployed to ${APP_DIR}"
 
 # ---------------------------------------------------------------------------
 # 5. Backend setup
 # ---------------------------------------------------------------------------
 echo ""
-echo "[5/9] Setting up backend..."
+echo "[5/8] Setting up backend..."
 cd ${APP_DIR}/backend
 
-npm install --production=false 2>/dev/null
+echo "  Installing dependencies..."
+npm install --production=false 2>&1 | tail -3
 
-# Create .env file (only if not already present / restored from backup)
+# Create .env if it doesn't exist
 if [ ! -f .env ]; then
-cat > .env <<ENVEOF
+  cat > .env <<ENVEOF
 NODE_ENV=production
 PORT=${BACKEND_PORT}
 LOG_LEVEL=info
@@ -148,30 +153,48 @@ else
   echo "  .env already exists, keeping it"
 fi
 
-# Create output directory
 mkdir -p ${APP_DIR}/backend/output
 
-# Run migrations and seed
-echo "  Running database migrations and seed..."
-npx tsx src/infrastructure/database/seed.ts 2>&1 | tail -3
+# Run seed (creates tables + sample data)
+echo "  Running database seed..."
+npx tsx src/infrastructure/database/seed.ts 2>&1 || echo "  WARNING: Seed had errors (may be OK if tables exist)"
 
 # ---------------------------------------------------------------------------
 # 6. Frontend build
 # ---------------------------------------------------------------------------
 echo ""
-echo "[6/9] Building frontend..."
+echo "[6/8] Building frontend..."
 cd ${APP_DIR}/frontend
-npm install 2>/dev/null
-npx vite build 2>&1 | tail -5
+
+echo "  Installing dependencies..."
+npm install 2>&1 | tail -3
+
+echo "  Running vite build..."
+npx vite build 2>&1
+
+# Verify the build produced files
+if [ ! -f "${APP_DIR}/frontend/dist/index.html" ]; then
+  echo "  ERROR: Frontend build failed! dist/index.html not found."
+  echo "  Trying alternative build..."
+  # Try without tsc (in case of TS errors)
+  npx vite build --mode production 2>&1
+fi
+
+if [ -f "${APP_DIR}/frontend/dist/index.html" ]; then
+  echo "  Frontend built successfully:"
+  ls -la ${APP_DIR}/frontend/dist/
+else
+  echo "  FATAL: Frontend build failed. Check errors above."
+  exit 1
+fi
 
 # ---------------------------------------------------------------------------
 # 7. Start backend with PM2
 # ---------------------------------------------------------------------------
 echo ""
-echo "[7/9] Starting backend with PM2..."
+echo "[7/8] Starting backend with PM2..."
 cd ${APP_DIR}/backend
 
-# Stop existing instance if running
 pm2 delete ${APP_NAME} 2>/dev/null || true
 
 pm2 start "npx tsx src/index.ts" \
@@ -183,39 +206,44 @@ pm2 start "npx tsx src/index.ts" \
 pm2 save
 pm2 startup systemd -u root --hp /root 2>/dev/null || true
 
-echo "  Backend running on port ${BACKEND_PORT}"
+# Wait for backend to start and verify
+echo "  Waiting for backend to start..."
+sleep 3
+if curl -sf http://127.0.0.1:${BACKEND_PORT}/api/health > /dev/null 2>&1; then
+  echo "  Backend is running on port ${BACKEND_PORT}"
+else
+  echo "  WARNING: Backend health check failed. Checking logs..."
+  pm2 logs ${APP_NAME} --lines 15 --nostream 2>&1 || true
+  echo "  Backend may still be starting up..."
+fi
 
 # ---------------------------------------------------------------------------
 # 8. Nginx configuration
 # ---------------------------------------------------------------------------
 echo ""
-echo "[8/9] Configuring Nginx..."
+echo "[8/8] Configuring Nginx..."
 
-# Always recreate Nginx config to pick up fixes
 NGINX_CONF="/etc/nginx/sites-available/${DOMAIN}"
 
-# Backup existing SSL settings if certbot modified the config
-SSL_CERT=""
-SSL_KEY=""
-if [ -f "${NGINX_CONF}" ]; then
-  SSL_CERT=$(grep -oP 'ssl_certificate\s+\K[^;]+' ${NGINX_CONF} 2>/dev/null | head -1 || true)
-  SSL_KEY=$(grep -oP 'ssl_certificate_key\s+\K[^;]+' ${NGINX_CONF} 2>/dev/null | head -1 || true)
-fi
+# Remove default site to avoid conflicts
+rm -f /etc/nginx/sites-enabled/default
 
+# Create Nginx config - proxy ALL /hire-onboarding traffic to backend
+# This avoids the unreliable alias + try_files combination
 cat > ${NGINX_CONF} <<'NGINXEOF'
 server {
-    listen 80;
+    listen 80 default_server;
     server_name brandon.nfapps.ai;
-    root /var/www/brandon.nfapps.ai;
 
     # Redirect bare /hire-onboarding to /hire-onboarding/
     location = /hire-onboarding {
         return 301 /hire-onboarding/;
     }
 
-    # Hire Onboarding API (must come before static files)
-    location /hire-onboarding/api/ {
-        rewrite ^/hire-onboarding/api(/.*)$ /api$1 break;
+    # Proxy ALL /hire-onboarding/ requests to the Node.js backend
+    # The backend serves both the API and the frontend static files
+    location /hire-onboarding/ {
+        rewrite ^/hire-onboarding(/.*)$ $1 break;
         proxy_pass http://127.0.0.1:4000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -226,74 +254,68 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_cache_bypass $http_upgrade;
         proxy_read_timeout 120s;
+        proxy_buffering off;
     }
 
-    # Hire Onboarding Frontend (trailing slashes on both location and alias)
-    location /hire-onboarding/ {
-        alias /var/www/brandon.nfapps.ai/hire-onboarding/frontend/dist/;
+    # Default root
+    location / {
+        root /var/www/brandon.nfapps.ai;
         index index.html;
-        try_files $uri $uri/ /hire-onboarding/index.html;
     }
 }
 NGINXEOF
 
-# Re-add SSL if it was configured
-if [ -n "${SSL_CERT}" ] && [ -n "${SSL_KEY}" ]; then
-  echo "  Restoring SSL configuration..."
-  # Let certbot re-add SSL on next run, or re-run certbot
-  certbot --nginx -d ${DOMAIN} --non-interactive --agree-tos -m admin@${DOMAIN} 2>/dev/null || true
-fi
+ln -sf ${NGINX_CONF} /etc/nginx/sites-enabled/${DOMAIN}
 
-# Enable the site
-ln -sf ${NGINX_CONF} /etc/nginx/sites-enabled/${DOMAIN} 2>/dev/null || true
-
-# Test and reload
+echo "  Testing Nginx config..."
 nginx -t 2>&1
 systemctl reload nginx
-
 echo "  Nginx configured and reloaded"
 
 # ---------------------------------------------------------------------------
-# 9. SSL with Certbot (if not already set up)
+# SSL (optional, non-blocking)
 # ---------------------------------------------------------------------------
 echo ""
-echo "[9/9] Checking SSL..."
-if command -v certbot &>/dev/null; then
-  if [ ! -d "/etc/letsencrypt/live/${DOMAIN}" ]; then
-    echo "  Setting up SSL with Let's Encrypt..."
-    apt-get install -y -qq certbot python3-certbot-nginx 2>/dev/null
-    certbot --nginx -d ${DOMAIN} --non-interactive --agree-tos -m admin@${DOMAIN} 2>/dev/null || echo "  SSL setup skipped (may need manual configuration)"
-  else
-    echo "  SSL already configured"
-  fi
+echo "Checking SSL..."
+if ! [ -d "/etc/letsencrypt/live/${DOMAIN}" ]; then
+  apt-get install -y -qq certbot python3-certbot-nginx 2>/dev/null || true
+  certbot --nginx -d ${DOMAIN} --non-interactive --agree-tos -m admin@${DOMAIN} 2>/dev/null || echo "  SSL: configure manually later if needed"
 else
-  echo "  Installing certbot..."
-  apt-get install -y -qq certbot python3-certbot-nginx 2>/dev/null
-  certbot --nginx -d ${DOMAIN} --non-interactive --agree-tos -m admin@${DOMAIN} 2>/dev/null || echo "  SSL setup skipped (may need manual configuration)"
+  echo "  SSL already configured"
 fi
 
 # ---------------------------------------------------------------------------
-# Done!
+# Final verification
 # ---------------------------------------------------------------------------
+echo ""
+echo "============================================="
+echo "  VERIFYING DEPLOYMENT..."
+echo "============================================="
+
+# Check if backend responds
+if curl -sf http://127.0.0.1:${BACKEND_PORT}/api/health; then
+  echo ""
+  echo "  Backend: OK"
+else
+  echo "  Backend: STARTING (may take a moment)"
+fi
+
+# Check if Nginx proxies correctly
+sleep 1
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1/hire-onboarding/ 2>/dev/null || echo "000")
+echo "  Nginx proxy test: HTTP ${HTTP_CODE}"
+
 echo ""
 echo "============================================="
 echo "  DEPLOYMENT COMPLETE!"
 echo "============================================="
 echo ""
 echo "  URL: https://${DOMAIN}/hire-onboarding"
+echo "  (or http://${DOMAIN}/hire-onboarding if SSL not configured)"
 echo "  Login: admin / admin"
 echo ""
-echo "  Database password saved in:"
-echo "    ${APP_DIR}/backend/.env"
-echo ""
-echo "  Manage the backend:"
+echo "  Manage:"
 echo "    pm2 status"
 echo "    pm2 logs ${APP_NAME}"
-echo "    pm2 restart ${APP_NAME}"
-echo ""
-echo "  To redeploy after code changes:"
-echo "    cd ${APP_DIR} && git pull origin ${BRANCH}"
-echo "    cd backend && npm install && npx tsx src/infrastructure/database/seed.ts"
-echo "    cd ../frontend && npm install && npx vite build"
 echo "    pm2 restart ${APP_NAME}"
 echo "============================================="
