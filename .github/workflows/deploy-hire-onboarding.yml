@@ -1,0 +1,173 @@
+name: Deploy Hire Onboarding to VPS
+
+on:
+  push:
+    branches: [claude/hire-onboarding-automation-KAVRZ]
+    paths:
+      - 'hire-onboarding/**'
+      - 'deploy/**'
+      - '.github/workflows/deploy-hire-onboarding.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Build Frontend
+        run: |
+          cd hire-onboarding/frontend
+          npm ci
+          npx vite build
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: root
+          password: ${{ secrets.VPS_PASSWORD }}
+          script: |
+            set -e
+            echo "=== Starting Hire Onboarding Deployment ==="
+
+            # Install dependencies if missing
+            command -v node >/dev/null 2>&1 || {
+              curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+              apt-get install -y nodejs
+            }
+            command -v pm2 >/dev/null 2>&1 || npm install -g pm2
+            dpkg -l | grep -q postgresql || {
+              apt-get update -qq
+              apt-get install -y -qq postgresql postgresql-contrib redis-server libreoffice-writer
+              systemctl enable postgresql redis-server
+              systemctl start postgresql redis-server
+            }
+
+            # Ensure PostgreSQL and Redis are running
+            systemctl start postgresql 2>/dev/null || true
+            systemctl start redis-server 2>/dev/null || true
+
+            # Database setup (idempotent)
+            DB_PASS="hire_prod_$(hostname | md5sum | cut -c1-16)"
+            sudo -u postgres psql -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='hire_user') THEN CREATE ROLE hire_user WITH LOGIN PASSWORD '${DB_PASS}'; END IF; END \$\$;" 2>/dev/null
+            sudo -u postgres psql -c "SELECT 1 FROM pg_database WHERE datname='hire_onboarding'" | grep -q 1 || sudo -u postgres psql -c "CREATE DATABASE hire_onboarding OWNER hire_user;" 2>/dev/null
+            sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE hire_onboarding TO hire_user;" 2>/dev/null
+
+            # Clone/update code
+            APP_DIR="/var/www/brandon.nfapps.ai/hire-onboarding"
+            mkdir -p /var/www/brandon.nfapps.ai
+
+            cd /tmp && rm -rf Test-Brandon-hire
+            git clone --depth 1 -b claude/hire-onboarding-automation-KAVRZ https://github.com/brandoncheema-ops/Test-Brandon.git Test-Brandon-hire
+
+            # Sync app files
+            if [ -d "${APP_DIR}" ]; then
+              rsync -av --delete --exclude='.env' --exclude='node_modules' --exclude='output' --exclude='.git' Test-Brandon-hire/hire-onboarding/ ${APP_DIR}/
+            else
+              mv Test-Brandon-hire/hire-onboarding ${APP_DIR}
+            fi
+
+            # Backend setup
+            cd ${APP_DIR}/backend
+            npm install --production=false 2>/dev/null
+
+            # Create .env if not exists
+            if [ ! -f .env ]; then
+              cat > .env <<ENVEOF
+            NODE_ENV=production
+            PORT=4000
+            LOG_LEVEL=info
+            BETA_MODE=true
+            BETA_ALLOWED_DOMAINS=balcpa.com
+            DATABASE_URL=postgresql://hire_user:${DB_PASS}@localhost:5432/hire_onboarding
+            DATABASE_POOL_MIN=2
+            DATABASE_POOL_MAX=10
+            REDIS_URL=redis://localhost:6379
+            SESSION_SECRET=$(openssl rand -hex 32)
+            DASHBOARD_USERNAME=admin
+            AZURE_TENANT_ID=demo
+            AZURE_CLIENT_ID=demo
+            AZURE_CLIENT_SECRET=demo
+            AUTOMATION_INBOX_EMAIL=hire-automation@balcpa.com
+            EMAIL_POLL_INTERVAL_SECONDS=300
+            SHAREPOINT_SITE_ID=demo
+            SHAREPOINT_DRIVE_ID=demo
+            ANTHROPIC_API_KEY=demo
+            LLM_MODEL=claude-sonnet-4-6
+            LLM_CONFIDENCE_THRESHOLD=0.8
+            TEMPLATES_DIR=${APP_DIR}/backend/templates
+            OUTPUT_DIR=${APP_DIR}/backend/output
+            LIBREOFFICE_PATH=/usr/bin/libreoffice
+            ENVEOF
+            fi
+
+            mkdir -p ${APP_DIR}/backend/output
+
+            # Run migrations + seed
+            npx tsx src/infrastructure/database/seed.ts 2>&1 || true
+
+            # Frontend is already built in the CI step, copy the dist
+            mkdir -p ${APP_DIR}/frontend/dist
+
+            # Start/restart backend with PM2
+            pm2 delete hire-onboarding 2>/dev/null || true
+            pm2 start "npx tsx src/index.ts" --name hire-onboarding --cwd ${APP_DIR}/backend
+            pm2 save
+            pm2 startup systemd -u root --hp /root 2>/dev/null || true
+
+            # Configure Nginx
+            NGINX_CONF="/etc/nginx/sites-available/brandon.nfapps.ai"
+            if [ ! -f "${NGINX_CONF}" ]; then
+              cat > ${NGINX_CONF} <<'NGINXEOF'
+            server {
+                listen 80;
+                server_name brandon.nfapps.ai;
+                root /var/www/brandon.nfapps.ai;
+
+                location /hire-onboarding {
+                    alias /var/www/brandon.nfapps.ai/hire-onboarding/frontend/dist;
+                    index index.html;
+                    try_files $uri $uri/ /hire-onboarding/index.html;
+                }
+
+                location /hire-onboarding/api {
+                    rewrite ^/hire-onboarding/api(.*) /api$1 break;
+                    proxy_pass http://127.0.0.1:4000;
+                    proxy_http_version 1.1;
+                    proxy_set_header Upgrade $http_upgrade;
+                    proxy_set_header Connection 'upgrade';
+                    proxy_set_header Host $host;
+                    proxy_set_header X-Real-IP $remote_addr;
+                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto $scheme;
+                    proxy_cache_bypass $http_upgrade;
+                    proxy_read_timeout 120s;
+                }
+            }
+            NGINXEOF
+              ln -sf ${NGINX_CONF} /etc/nginx/sites-enabled/brandon.nfapps.ai
+            elif ! grep -q "hire-onboarding" ${NGINX_CONF}; then
+              # Insert hire-onboarding location blocks before closing brace
+              sed -i '/^}/i \    location /hire-onboarding {\n        alias /var/www/brandon.nfapps.ai/hire-onboarding/frontend/dist;\n        index index.html;\n        try_files $uri $uri/ /hire-onboarding/index.html;\n    }\n\n    location /hire-onboarding/api {\n        rewrite ^/hire-onboarding/api(.*) /api$1 break;\n        proxy_pass http://127.0.0.1:4000;\n        proxy_http_version 1.1;\n        proxy_set_header Upgrade $http_upgrade;\n        proxy_set_header Connection '"'"'upgrade'"'"';\n        proxy_set_header Host $host;\n        proxy_set_header X-Real-IP $remote_addr;\n        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n        proxy_set_header X-Forwarded-Proto $scheme;\n        proxy_cache_bypass $http_upgrade;\n        proxy_read_timeout 120s;\n    }' ${NGINX_CONF}
+            fi
+
+            nginx -t && systemctl reload nginx
+
+            # SSL setup
+            if ! [ -d "/etc/letsencrypt/live/brandon.nfapps.ai" ]; then
+              apt-get install -y -qq certbot python3-certbot-nginx 2>/dev/null || true
+              certbot --nginx -d brandon.nfapps.ai --non-interactive --agree-tos -m admin@brandon.nfapps.ai 2>/dev/null || echo "SSL: configure manually if needed"
+            fi
+
+            # Cleanup
+            rm -rf /tmp/Test-Brandon-hire
+
+            echo "=== Deployment Complete ==="
+            echo "URL: https://brandon.nfapps.ai/hire-onboarding"
+            pm2 status
