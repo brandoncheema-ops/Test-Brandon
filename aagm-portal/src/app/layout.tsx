@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -18,7 +19,7 @@ export default function RootLayout({
         <div className="flex min-h-screen flex-col">
           <header className="sticky top-0 z-50 border-b border-border bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
             <div className="mx-auto flex h-14 max-w-screen-2xl items-center justify-between px-6">
-              <a href="/dashboard" className="flex items-center gap-2.5">
+              <Link href="/dashboard" className="flex items-center gap-2.5">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
                   AG
                 </div>
@@ -30,20 +31,20 @@ export default function RootLayout({
                     Subsidy & Income Guarantee
                   </span>
                 </div>
-              </a>
+              </Link>
               <nav className="flex items-center gap-1">
-                <a
+                <Link
                   href="/dashboard"
                   className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                 >
                   Dashboard
-                </a>
-                <a
+                </Link>
+                <Link
                   href="/settings/contracts"
                   className="rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                 >
                   Contracts
-                </a>
+                </Link>
               </nav>
             </div>
           </header>

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { getMonthRun } from "@/app/actions/months";
 import {
   formatCurrency,
@@ -120,7 +121,7 @@ export default async function ReviewPage({
     <div className="mx-auto max-w-screen-xl px-6 py-8">
       {/* ── A. Header ─────────────────────────────────────────────── */}
       <div className="mb-8">
-        <a
+        <Link
           href={`/months/${id}`}
           className="mb-2 inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
         >
@@ -138,7 +139,7 @@ export default async function ReviewPage({
             />
           </svg>
           Back to {monthRun.monthLabel}
-        </a>
+        </Link>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">

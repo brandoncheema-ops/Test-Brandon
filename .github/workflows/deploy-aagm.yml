@@ -1,0 +1,167 @@
+name: Deploy AAGM Portal
+
+on:
+  push:
+    branches: [claude/internal-app-build-OFAMe]
+    paths:
+      - 'aagm-portal/**'
+      - '.github/workflows/deploy-aagm.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: |
+          cd aagm-portal
+          npm ci
+
+      - name: Generate Prisma client
+        run: |
+          cd aagm-portal
+          npx prisma generate
+
+      - name: Build Next.js standalone
+        run: |
+          cd aagm-portal
+          npx next build
+        env:
+          DATABASE_URL: "file:./dev.db"
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+
+            APP_DIR="/opt/apps/aagm-portal"
+            STATIC_DIR="/var/www/brandon.nfapps.ai/aagm"
+            REPO_URL="https://github.com/brandoncheema-ops/Test-Brandon.git"
+            BRANCH="claude/internal-app-build-OFAMe"
+
+            echo "==> Cloning repo..."
+            cd /tmp && rm -rf aagm-deploy
+            git clone --depth 1 -b "$BRANCH" "$REPO_URL" aagm-deploy
+
+            echo "==> Installing dependencies..."
+            cd /tmp/aagm-deploy/aagm-portal
+            npm ci
+
+            echo "==> Generating Prisma client..."
+            npx prisma generate
+
+            echo "==> Building Next.js..."
+            DATABASE_URL="file:./data/aagm.db" npx next build
+
+            echo "==> Setting up app directory..."
+            mkdir -p "$APP_DIR/data"
+            mkdir -p "$APP_DIR/uploads/raw"
+            mkdir -p "$APP_DIR/uploads/processed"
+
+            # Preserve existing database if it exists
+            if [ -f "$APP_DIR/data/aagm.db" ]; then
+              echo "==> Preserving existing database"
+              cp "$APP_DIR/data/aagm.db" /tmp/aagm-db-backup.db
+            fi
+
+            # Copy standalone build
+            echo "==> Deploying standalone build..."
+            rsync -av --delete \
+              --exclude='data/' \
+              --exclude='uploads/' \
+              .next/standalone/ "$APP_DIR/"
+
+            # Copy static assets
+            mkdir -p "$APP_DIR/.next/static"
+            rsync -av --delete .next/static/ "$APP_DIR/.next/static/"
+
+            # Copy public folder if exists
+            if [ -d "public" ]; then
+              rsync -av --delete public/ "$APP_DIR/public/"
+            fi
+
+            # Copy Prisma schema + migrations for db push
+            mkdir -p "$APP_DIR/prisma"
+            cp prisma/schema.prisma "$APP_DIR/prisma/"
+            cp prisma/seed.ts "$APP_DIR/prisma/" 2>/dev/null || true
+
+            # Copy node_modules for prisma CLI
+            rsync -av node_modules/.prisma/ "$APP_DIR/node_modules/.prisma/" 2>/dev/null || true
+            rsync -av node_modules/@prisma/ "$APP_DIR/node_modules/@prisma/" 2>/dev/null || true
+            rsync -av node_modules/prisma/ "$APP_DIR/node_modules/prisma/" 2>/dev/null || true
+
+            # Restore or initialize database
+            if [ -f /tmp/aagm-db-backup.db ]; then
+              echo "==> Restoring database..."
+              mv /tmp/aagm-db-backup.db "$APP_DIR/data/aagm.db"
+              # Run migrations/push to update schema
+              cd "$APP_DIR"
+              DATABASE_URL="file:./data/aagm.db" npx prisma db push --accept-data-loss 2>/dev/null || true
+            else
+              echo "==> Initializing new database..."
+              cd "$APP_DIR"
+              DATABASE_URL="file:./data/aagm.db" npx prisma db push
+              # Install tsx for seed script
+              npm install tsx 2>/dev/null || true
+              DATABASE_URL="file:./data/aagm.db" npx tsx prisma/seed.ts 2>/dev/null || echo "Seed skipped"
+            fi
+
+            echo "==> Starting/restarting with PM2..."
+            cd "$APP_DIR"
+            cat > ecosystem.config.cjs << 'PMEOF'
+            module.exports = {
+              apps: [{
+                name: 'aagm-portal',
+                script: 'server.js',
+                cwd: '/opt/apps/aagm-portal',
+                env: {
+                  NODE_ENV: 'production',
+                  PORT: 3100,
+                  HOSTNAME: '127.0.0.1',
+                  DATABASE_URL: 'file:./data/aagm.db',
+                  UPLOAD_DIR: './uploads'
+                }
+              }]
+            };
+            PMEOF
+
+            pm2 delete aagm-portal 2>/dev/null || true
+            pm2 start ecosystem.config.cjs
+            pm2 save
+
+            echo "==> Configuring nginx..."
+            # Copy nginx config and include it if not already
+            mkdir -p "$APP_DIR/deploy"
+            cp /tmp/aagm-deploy/aagm-portal/deploy/nginx-aagm.conf "$APP_DIR/deploy/" 2>/dev/null || true
+
+            # Check if nginx snippet already exists
+            if [ ! -f /etc/nginx/snippets/aagm.conf ]; then
+              cp "$APP_DIR/deploy/nginx-aagm.conf" /etc/nginx/snippets/aagm.conf 2>/dev/null || true
+              # Try to add include to the server block if not already present
+              if ! grep -q "snippets/aagm.conf" /etc/nginx/sites-enabled/brandon.nfapps.ai 2>/dev/null; then
+                if [ -f /etc/nginx/sites-enabled/brandon.nfapps.ai ]; then
+                  # Insert include before the last closing brace
+                  sed -i '/^}/i\    include snippets/aagm.conf;' /etc/nginx/sites-enabled/brandon.nfapps.ai 2>/dev/null || true
+                fi
+              fi
+              nginx -t 2>/dev/null && systemctl reload nginx 2>/dev/null || echo "Nginx reload skipped - may need manual config"
+            else
+              # Update the config
+              cp "$APP_DIR/deploy/nginx-aagm.conf" /etc/nginx/snippets/aagm.conf
+              nginx -t 2>/dev/null && systemctl reload nginx 2>/dev/null || echo "Nginx reload skipped"
+            fi
+
+            echo "==> Cleanup..."
+            rm -rf /tmp/aagm-deploy
+
+            echo "==> Done! AAGM Portal deployed at https://brandon.nfapps.ai/aagm"

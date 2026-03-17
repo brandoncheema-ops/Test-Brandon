@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { getMonthRun } from "@/app/actions/months";
 import { formatCurrency, formatDate, getStatusLabel } from "@/lib/utils";
 import { ExportActions } from "@/components/months/export-actions";
@@ -18,7 +19,7 @@ export default async function ExportsPage({
     <div className="mx-auto max-w-screen-xl px-6 py-8">
       {/* Header */}
       <div className="mb-8">
-        <a
+        <Link
           href={`/months/${id}`}
           className="mb-2 inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
         >
@@ -26,7 +27,7 @@ export default async function ExportsPage({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
           Back to {monthRun.monthLabel}
-        </a>
+        </Link>
         <h1 className="text-2xl font-semibold tracking-tight">
           Exports — {monthRun.monthLabel}
         </h1>

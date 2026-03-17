@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { getMonthRun, getPeriodMonths } from "@/app/actions/months";
 import {
   formatCurrency,
@@ -148,7 +149,7 @@ export default async function ReconciliationPage({
     <div className="mx-auto max-w-screen-xl px-6 py-8">
       {/* ── A. Header ─────────────────────────────────────────────── */}
       <div className="mb-8">
-        <a
+        <Link
           href={`/months/${id}`}
           className="mb-2 inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
         >
@@ -166,7 +167,7 @@ export default async function ReconciliationPage({
             />
           </svg>
           Back to {monthRun.monthLabel}
-        </a>
+        </Link>
         <h1 className="text-2xl font-semibold tracking-tight">
           Reconciliation &mdash; {monthRun.monthLabel}
         </h1>
