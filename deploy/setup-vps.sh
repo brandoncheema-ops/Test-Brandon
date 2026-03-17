@@ -75,19 +75,24 @@ echo ""
 echo "[4/9] Fetching application code..."
 mkdir -p /var/www/${DOMAIN}
 
-if [ -d "${APP_DIR}" ]; then
-  echo "  Updating existing code..."
-  cd "${APP_DIR}"
-  git fetch origin ${BRANCH}
-  git reset --hard origin/${BRANCH}
-else
-  echo "  Cloning repository..."
-  cd /tmp
-  rm -rf Test-Brandon-deploy
-  git clone -b ${BRANCH} --single-branch ${REPO_URL} Test-Brandon-deploy
-  mv Test-Brandon-deploy/hire-onboarding ${APP_DIR}
-  rm -rf Test-Brandon-deploy
+# Always do a fresh clone to /tmp, then sync
+echo "  Cloning fresh from GitHub..."
+cd /tmp
+rm -rf Test-Brandon-deploy
+git clone -b ${BRANCH} --single-branch ${REPO_URL} Test-Brandon-deploy
+
+# Remove old app dir if it exists (preserve .env if present)
+if [ -f "${APP_DIR}/backend/.env" ]; then
+  cp "${APP_DIR}/backend/.env" /tmp/hire-onboarding-env-backup
 fi
+rm -rf ${APP_DIR}
+mv Test-Brandon-deploy/hire-onboarding ${APP_DIR}
+# Restore .env if it was backed up
+if [ -f /tmp/hire-onboarding-env-backup ]; then
+  mv /tmp/hire-onboarding-env-backup ${APP_DIR}/backend/.env
+  echo "  Restored existing .env"
+fi
+rm -rf Test-Brandon-deploy
 
 cd ${APP_DIR}
 
@@ -100,7 +105,8 @@ cd ${APP_DIR}/backend
 
 npm install --production=false 2>/dev/null
 
-# Create .env file
+# Create .env file (only if not already present / restored from backup)
+if [ ! -f .env ]; then
 cat > .env <<ENVEOF
 NODE_ENV=production
 PORT=${BACKEND_PORT}
@@ -137,8 +143,10 @@ TEMPLATES_DIR=${APP_DIR}/backend/templates
 OUTPUT_DIR=${APP_DIR}/backend/output
 LIBREOFFICE_PATH=/usr/bin/libreoffice
 ENVEOF
-
-echo "  .env created"
+  echo "  .env created"
+else
+  echo "  .env already exists, keeping it"
+fi
 
 # Create output directory
 mkdir -p ${APP_DIR}/backend/output
