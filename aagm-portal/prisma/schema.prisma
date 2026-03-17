@@ -1,0 +1,255 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// CONTRACT VERSION
+// Tracks how contract terms change over time.
+// Each month is associated with the active contract version
+// based on its date falling within the effective range.
+// ============================================================
+model ContractVersion {
+  id                     String   @id @default(uuid())
+  name                   String
+  code                   String   @unique
+  effectiveStartDate     DateTime
+  effectiveEndDate       DateTime?
+  invoiceAmount          Float
+  requiredMonthlyRevenue Float?
+  quarterTargetRevenue   Float?
+  annualFmvExpense       Float?
+  annualRequiredRevenue  Float?
+  maxAnnualSubsidy       Float?
+  includedLocations      String   // JSON array of canonical location names
+  invoiceTemplateConfig  String?  // JSON config for invoice generation
+  settlementRules        String?  // JSON rules for quarter-end settlement logic
+  periodMonths           Int      @default(3) // number of months in a settlement period
+  isActive               Boolean  @default(true)
+  notes                  String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  monthRuns       MonthRun[]
+  locationAliases LocationAlias[]
+}
+
+// ============================================================
+// MONTH RUN
+// One record per month. Central workflow entity.
+// Tracks status from Pending -> Finalized.
+// ============================================================
+model MonthRun {
+  id                String    @id @default(uuid())
+  monthNumber       Int       // 1-12
+  yearNumber        Int       // e.g. 2025
+  monthLabel        String    // e.g. "Nov 2025"
+  periodKey         String    @unique // e.g. "2025-11"
+  status            String    @default("pending") // pending, needs_upload, in_review, ready_to_finalize, finalized
+  contractVersionId String
+  carryforwardIn    Float     @default(0) // overage carried in from prior month/period
+  carryforwardOut   Float     @default(0) // overage to carry to next month/period
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  finalizedAt       DateTime?
+
+  contractVersion      ContractVersion       @relation(fields: [contractVersionId], references: [id])
+  uploadFiles          UploadFile[]
+  collectionsRows      CollectionsImportRow[]
+  expenseRows          ExpenseImportRow[]
+  financialSummary     MonthFinancialSummary?
+  calculationSnapshots CalculationSnapshot[]
+  overrideLogs         OverrideLog[]
+  auditEvents          AuditEvent[]
+  exportArtifacts      ExportArtifact[]
+
+  @@unique([monthNumber, yearNumber])
+}
+
+// ============================================================
+// UPLOAD FILE
+// Preserves every uploaded source file with metadata.
+// ============================================================
+model UploadFile {
+  id               String   @id @default(uuid())
+  monthRunId       String
+  category         String   // collections, monthly_statement, invoice, support_doc
+  originalFilename String
+  mimeType         String?
+  storagePath      String
+  uploadedAt       DateTime @default(now())
+  fileHash         String?
+  fileSizeBytes    Int?
+  parseStatus      String   @default("pending") // pending, parsed, failed, skipped
+  parseNotes       String?
+
+  monthRun        MonthRun              @relation(fields: [monthRunId], references: [id])
+  collectionsRows CollectionsImportRow[]
+  expenseRows     ExpenseImportRow[]
+}
+
+// ============================================================
+// LOCATION ALIAS
+// Maps raw location names from source files to canonical values.
+// Supports contract-version-scoped or global aliases.
+// ============================================================
+model LocationAlias {
+  id                String   @id @default(uuid())
+  contractVersionId String?
+  sourceValue       String
+  canonicalValue    String
+  isActive          Boolean  @default(true)
+  notes             String?
+  createdAt         DateTime @default(now())
+
+  contractVersion ContractVersion? @relation(fields: [contractVersionId], references: [id])
+
+  @@unique([sourceValue, contractVersionId])
+}
+
+// ============================================================
+// COLLECTIONS IMPORT ROW
+// Parsed row from collections files. Stores both raw and
+// canonical values. Each row = one location/month combination.
+// ============================================================
+model CollectionsImportRow {
+  id                      String   @id @default(uuid())
+  monthRunId              String
+  uploadFileId            String
+  sourceMonthLabel        String?  // raw month label from file
+  sourceLocationRaw       String   // raw location name from file
+  sourceLocationCanonical String?  // mapped canonical location
+  payments                Float    @default(0)
+  refunds                 Float    @default(0)
+  units                   Float    @default(0)
+  netCollections          Float    @default(0)
+  reviewStatus            String   @default("pending") // pending, confirmed, flagged, excluded
+  createdAt               DateTime @default(now())
+
+  monthRun   MonthRun   @relation(fields: [monthRunId], references: [id])
+  uploadFile UploadFile @relation(fields: [uploadFileId], references: [id])
+}
+
+// ============================================================
+// EXPENSE IMPORT ROW
+// Parsed expense line items. Reporting only - not used in
+// subsidy calculations.
+// ============================================================
+model ExpenseImportRow {
+  id                String   @id @default(uuid())
+  monthRunId        String
+  uploadFileId      String
+  categoryRaw       String
+  categoryCanonical String?
+  amount            Float    @default(0)
+  reviewStatus      String   @default("pending")
+  createdAt         DateTime @default(now())
+
+  monthRun   MonthRun   @relation(fields: [monthRunId], references: [id])
+  uploadFile UploadFile @relation(fields: [uploadFileId], references: [id])
+}
+
+// ============================================================
+// MONTH FINANCIAL SUMMARY
+// Denormalized summary of the three financial truths for a month:
+//   1. Invoice amount
+//   2. Expected payment (subsidy check expected)
+//   3. Actual cash received
+// Plus collections totals and reconciliation deltas.
+// ============================================================
+model MonthFinancialSummary {
+  id                                  String   @id @default(uuid())
+  monthRunId                          String   @unique
+  collectionsTotal                    Float    @default(0)
+  totalUnits                          Float    @default(0)
+  totalExpenses                       Float    @default(0) // reporting only
+  requiredNetRevenue                  Float    @default(0)
+  overage                             Float    @default(0) // collections - required (negative = shortfall)
+  invoiceAmount                       Float    @default(0)
+  expectedPayment                     Float    @default(0) // subsidy check expected after settlement
+  actualPaymentReceived               Float?   // null until received
+  periodCollectionsTotal              Float    @default(0) // running period total
+  periodTargetRevenue                 Float    @default(0)
+  periodOverage                       Float    @default(0)
+  ytdSubsidyPaid                      Float    @default(0)
+  reconciliationDeltaInvoiceVsExpected Float   @default(0)
+  reconciliationDeltaExpectedVsActual  Float?
+  isDraft                             Boolean  @default(true)
+  calculationVersion                  Int      @default(1)
+  createdAt                           DateTime @default(now())
+  updatedAt                           DateTime @updatedAt
+
+  monthRun MonthRun @relation(fields: [monthRunId], references: [id])
+}
+
+// ============================================================
+// CALCULATION SNAPSHOT
+// Immutable snapshot of calculation inputs and outputs.
+// Supports draft vs final distinction for auditability.
+// ============================================================
+model CalculationSnapshot {
+  id           String   @id @default(uuid())
+  monthRunId   String
+  snapshotType String   // draft, final
+  inputJson    String   // JSON of all calculation inputs
+  outputJson   String   // JSON of all calculation outputs
+  version      Int      @default(1)
+  createdAt    DateTime @default(now())
+
+  monthRun MonthRun @relation(fields: [monthRunId], references: [id])
+}
+
+// ============================================================
+// OVERRIDE LOG
+// Every manual override is captured for full traceability.
+// ============================================================
+model OverrideLog {
+  id             String   @id @default(uuid())
+  monthRunId     String
+  targetTable    String
+  targetRecordId String
+  fieldName      String
+  oldValueJson   String
+  newValueJson   String
+  reason         String
+  createdAt      DateTime @default(now())
+  createdByLabel String   @default("operator")
+
+  monthRun MonthRun @relation(fields: [monthRunId], references: [id])
+}
+
+// ============================================================
+// AUDIT EVENT
+// General-purpose audit trail for all system actions.
+// ============================================================
+model AuditEvent {
+  id               String   @id @default(uuid())
+  monthRunId       String?
+  eventType        String   // upload, parse, review, override, finalize, reopen, export, etc.
+  eventDescription String?
+  eventPayloadJson String?  // JSON payload with event details
+  createdAt        DateTime @default(now())
+
+  monthRun MonthRun? @relation(fields: [monthRunId], references: [id])
+}
+
+// ============================================================
+// EXPORT ARTIFACT
+// Tracks generated outputs (PDF, CSV) for download history.
+// ============================================================
+model ExportArtifact {
+  id           String   @id @default(uuid())
+  monthRunId   String
+  artifactType String   // summary_pdf, invoice_pdf, month_report_pdf, csv_export
+  filename     String
+  storagePath  String
+  fileSizeBytes Int?
+  createdAt    DateTime @default(now())
+
+  monthRun MonthRun @relation(fields: [monthRunId], references: [id])
+}

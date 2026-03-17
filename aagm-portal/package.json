@@ -1,0 +1,49 @@
+{
+  "name": "aagm-portal",
+  "version": "1.0.0",
+  "description": "AAGM Subsidy / Income Guarantee Portal",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:push": "npx prisma db push",
+    "db:generate": "npx prisma generate",
+    "db:seed": "npx tsx prisma/seed.ts",
+    "db:reset": "rm -f prisma/dev.db && npx prisma db push && npx tsx prisma/seed.ts",
+    "db:studio": "npx prisma studio"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@prisma/client": "^6.19.2",
+    "@tailwindcss/postcss": "^4.2.1",
+    "@types/node": "^25.5.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.4.27",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "lucide-react": "^0.577.0",
+    "next": "^16.1.7",
+    "papaparse": "^5.5.3",
+    "postcss": "^8.5.8",
+    "prisma": "^6.19.2",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-hook-form": "^7.71.2",
+    "tailwind-merge": "^3.5.0",
+    "tailwindcss": "^4.2.1",
+    "typescript": "^5.9.3",
+    "uuid": "^13.0.0",
+    "xlsx": "^0.18.5",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/papaparse": "^5.5.2",
+    "@types/uuid": "^10.0.0",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.1.7",
+    "tsx": "^4.21.0"
+  }
+}

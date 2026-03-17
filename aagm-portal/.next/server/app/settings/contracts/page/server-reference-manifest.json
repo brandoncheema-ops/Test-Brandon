@@ -1,0 +1,80 @@
+{
+  "node": {
+    "005eadc1d978882821bbd019c515bfca8fbdc9cee2": {
+      "workers": {
+        "app/settings/contracts/page": {
+          "moduleId": 40821,
+          "async": false,
+          "exportedName": "getContractVersions",
+          "filename": "src/app/actions/contracts.ts"
+        }
+      },
+      "layer": {
+        "app/settings/contracts/page": "rsc"
+      },
+      "exportedName": "getContractVersions",
+      "filename": "src/app/actions/contracts.ts"
+    },
+    "400ca8cd04fe09871338d0e2a9fb038b2494a51528": {
+      "workers": {
+        "app/settings/contracts/page": {
+          "moduleId": 40821,
+          "async": false,
+          "exportedName": "getLocationAliases",
+          "filename": "src/app/actions/contracts.ts"
+        }
+      },
+      "layer": {
+        "app/settings/contracts/page": "rsc"
+      },
+      "exportedName": "getLocationAliases",
+      "filename": "src/app/actions/contracts.ts"
+    },
+    "404cda170364bfd6d900958ab8c67c1a5d3c9c19e7": {
+      "workers": {
+        "app/settings/contracts/page": {
+          "moduleId": 40821,
+          "async": false,
+          "exportedName": "createLocationAlias",
+          "filename": "src/app/actions/contracts.ts"
+        }
+      },
+      "layer": {
+        "app/settings/contracts/page": "action-browser"
+      },
+      "exportedName": "createLocationAlias",
+      "filename": "src/app/actions/contracts.ts"
+    },
+    "405b2dc4e19633d5b925c274febd996012828d0d26": {
+      "workers": {
+        "app/settings/contracts/page": {
+          "moduleId": 40821,
+          "async": false,
+          "exportedName": "createContractVersion",
+          "filename": "src/app/actions/contracts.ts"
+        }
+      },
+      "layer": {
+        "app/settings/contracts/page": "action-browser"
+      },
+      "exportedName": "createContractVersion",
+      "filename": "src/app/actions/contracts.ts"
+    },
+    "40b1b4e4690120380c46cf09ae8af384bee3f143e4": {
+      "workers": {
+        "app/settings/contracts/page": {
+          "moduleId": 40821,
+          "async": false,
+          "exportedName": "getContractVersion",
+          "filename": "src/app/actions/contracts.ts"
+        }
+      },
+      "layer": {
+        "app/settings/contracts/page": "rsc"
+      },
+      "exportedName": "getContractVersion",
+      "filename": "src/app/actions/contracts.ts"
+    }
+  },
+  "edge": {}
+}
