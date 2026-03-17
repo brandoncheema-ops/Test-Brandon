@@ -1,3 +1,0 @@
-{
-  "/api/exports/[monthRunId]/[filename]/route": "app/api/exports/[monthRunId]/[filename]/route.js"
-}
