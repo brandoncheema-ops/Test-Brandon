@@ -2,7 +2,7 @@
 // API Client - Communicates with the backend
 // =============================================================================
 
-const API_BASE = '/api';
+const API_BASE = '/hire-onboarding/api';
 
 async function request<T>(
   path: string,
@@ -19,8 +19,8 @@ async function request<T>(
 
   if (response.status === 401) {
     // Redirect to login if unauthorized
-    if (window.location.pathname !== '/login') {
-      window.location.href = '/login';
+    if (!window.location.pathname.endsWith('/login')) {
+      window.location.href = '/hire-onboarding/login';
     }
     throw new Error('Unauthorized');
   }
