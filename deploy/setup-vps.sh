@@ -191,68 +191,57 @@ echo "  Backend running on port ${BACKEND_PORT}"
 echo ""
 echo "[8/9] Configuring Nginx..."
 
-# Check if main server block exists
+# Always recreate Nginx config to pick up fixes
 NGINX_CONF="/etc/nginx/sites-available/${DOMAIN}"
 
-if [ ! -f "${NGINX_CONF}" ]; then
-  # Create a new server block
-  cat > ${NGINX_CONF} <<NGINXEOF
+# Backup existing SSL settings if certbot modified the config
+SSL_CERT=""
+SSL_KEY=""
+if [ -f "${NGINX_CONF}" ]; then
+  SSL_CERT=$(grep -oP 'ssl_certificate\s+\K[^;]+' ${NGINX_CONF} 2>/dev/null | head -1 || true)
+  SSL_KEY=$(grep -oP 'ssl_certificate_key\s+\K[^;]+' ${NGINX_CONF} 2>/dev/null | head -1 || true)
+fi
+
+cat > ${NGINX_CONF} <<'NGINXEOF'
 server {
     listen 80;
-    server_name ${DOMAIN};
+    server_name brandon.nfapps.ai;
+    root /var/www/brandon.nfapps.ai;
 
-    root /var/www/${DOMAIN};
-
-    # Hire Onboarding App
-    location /hire-onboarding {
-        alias ${APP_DIR}/frontend/dist;
-        index index.html;
-        try_files \$uri \$uri/ /hire-onboarding/index.html;
+    # Redirect bare /hire-onboarding to /hire-onboarding/
+    location = /hire-onboarding {
+        return 301 /hire-onboarding/;
     }
 
-    location /hire-onboarding/api {
-        rewrite ^/hire-onboarding/api(.*) /api\$1 break;
-        proxy_pass http://127.0.0.1:${BACKEND_PORT};
+    # Hire Onboarding API (must come before static files)
+    location /hire-onboarding/api/ {
+        rewrite ^/hire-onboarding/api(/.*)$ /api$1 break;
+        proxy_pass http://127.0.0.1:4000;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_cache_bypass \$http_upgrade;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
         proxy_read_timeout 120s;
+    }
+
+    # Hire Onboarding Frontend (trailing slashes on both location and alias)
+    location /hire-onboarding/ {
+        alias /var/www/brandon.nfapps.ai/hire-onboarding/frontend/dist/;
+        index index.html;
+        try_files $uri $uri/ /hire-onboarding/index.html;
     }
 }
 NGINXEOF
-else
-  # Append location blocks if not already present
-  if ! grep -q "hire-onboarding" ${NGINX_CONF}; then
-    # Insert before the last closing brace
-    sed -i '/^}/i \
-    # Hire Onboarding App\
-    location /hire-onboarding {\
-        alias '"${APP_DIR}"'/frontend/dist;\
-        index index.html;\
-        try_files $uri $uri/ /hire-onboarding/index.html;\
-    }\
-\
-    location /hire-onboarding/api {\
-        rewrite ^/hire-onboarding/api(.*) /api$1 break;\
-        proxy_pass http://127.0.0.1:'"${BACKEND_PORT}"';\
-        proxy_http_version 1.1;\
-        proxy_set_header Upgrade $http_upgrade;\
-        proxy_set_header Connection '"'"'upgrade'"'"';\
-        proxy_set_header Host $host;\
-        proxy_set_header X-Real-IP $remote_addr;\
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\
-        proxy_set_header X-Forwarded-Proto $scheme;\
-        proxy_cache_bypass $http_upgrade;\
-        proxy_read_timeout 120s;\
-    }' ${NGINX_CONF}
-  else
-    echo "  Nginx location blocks already exist"
-  fi
+
+# Re-add SSL if it was configured
+if [ -n "${SSL_CERT}" ] && [ -n "${SSL_KEY}" ]; then
+  echo "  Restoring SSL configuration..."
+  # Let certbot re-add SSL on next run, or re-run certbot
+  certbot --nginx -d ${DOMAIN} --non-interactive --agree-tos -m admin@${DOMAIN} 2>/dev/null || true
 fi
 
 # Enable the site
